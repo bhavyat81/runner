@@ -23,9 +23,10 @@ const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
 const SPAWN_Z: float = -90.0
 const DESPAWN_Z: float = 25.0
-const BUILDING_X_NEAR: float = 5.5   # First row (close to road)
-const BUILDING_X_FAR: float = 10.0   # Second row (behind first)
-const BUILDINGS_PER_SEGMENT: int = 4  # Buildings per segment per side
+const BUILDING_X_NEAR: float = 8.0   # First row (close to road)
+const BUILDING_X_FAR: float = 14.0   # Second row (behind first)
+const BUILDINGS_PER_SEGMENT: int = 2  # Buildings per segment per side
+const MOON_POSITION := Vector3(25.0, 45.0, -120.0)
 
 var road_segments: Array[Node3D] = []
 var left_buildings: Array[Node3D] = []
@@ -37,6 +38,7 @@ func _ready() -> void:
 	truck.died.connect(_on_truck_died)
 	_setup_road()
 	_setup_buildings()
+	_create_moon()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
 	obstacle_timer.start(2.5)
@@ -135,6 +137,44 @@ func _setup_buildings() -> void:
 			rb2.position = Vector3(BUILDING_X_FAR, 0.0, z_pos)
 			rb2.setup(height_r, 5.0, 15.0, _random_building_color().darkened(0.2))
 			right_buildings_far.append(rb2)
+
+func _create_moon() -> void:
+	# Moon sphere — added directly to Game node so it stays fixed (does not scroll)
+	var moon := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 3.0
+	sphere.height = 6.0
+	moon.mesh = sphere
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.98, 0.9, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.95, 0.85, 1.0)
+	mat.emission_energy_multiplier = 2.5
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	moon.set_surface_override_material(0, mat)
+
+	moon.position = MOON_POSITION
+	add_child(moon)
+
+	# Faint glow halo ring around the moon
+	var halo := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 3.2
+	torus.outer_radius = 4.0
+	halo.mesh = torus
+
+	var halo_mat := StandardMaterial3D.new()
+	halo_mat.albedo_color = Color(1.0, 0.95, 0.8, 0.3)
+	halo_mat.emission_enabled = true
+	halo_mat.emission = Color(1.0, 0.95, 0.8, 1.0)
+	halo_mat.emission_energy_multiplier = 1.0
+	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	halo.set_surface_override_material(0, halo_mat)
+
+	halo.position = MOON_POSITION
+	add_child(halo)
 
 func _random_building_color() -> Color:
 	var palette := [
