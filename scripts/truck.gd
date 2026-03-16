@@ -22,6 +22,8 @@ const SWIPE_THRESHOLD: float = 60.0
 signal died
 
 func _ready() -> void:
+	collision_layer = 1
+	collision_mask = 1
 	current_lane = 1
 	target_x = LANES[current_lane]
 	position = Vector3(0.0, 0.0, 0.0)

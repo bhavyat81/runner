@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://scripts/garbage_marker.gd" id="1_marker"]
 
 [node name="GarbageMarker" type="Area3D"]
+collision_layer = 4
+collision_mask = 1
 script = ExtResource("1_marker")
 
 [node name="MarkerMesh" type="MeshInstance3D" parent="."]

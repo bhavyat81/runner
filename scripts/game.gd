@@ -117,16 +117,17 @@ func _spawn_obstacle() -> void:
 	obstacle_container.add_child(obs)
 	obs.position.z = SPAWN_Z
 
+	# BRIGHT, high-contrast colors
 	var colors := [
-		Color(1.0, 0.25, 0.25, 1),
-		Color(1.0, 0.55, 0.05, 1),
-		Color(1.0, 0.9, 0.1, 1),
+		Color(1.0, 0.0, 0.0, 1),    # Bright red
+		Color(1.0, 0.5, 0.0, 1),    # Bright orange
+		Color(1.0, 1.0, 0.0, 1),    # Bright yellow
 	]
 	obs.setup(randi() % 3, colors[randi() % colors.size()])
 
 	var ratio: float = (GameManager.current_speed - GameManager.BASE_SPEED) / \
 		(GameManager.MAX_SPEED - GameManager.BASE_SPEED)
-	obstacle_timer.start(lerpf(3.5, 1.2, clampf(ratio, 0.0, 1.0)))
+	obstacle_timer.start(lerpf(3.5, 1.5, clampf(ratio, 0.0, 1.0)))
 
 func _spawn_garbage_marker() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -134,11 +135,11 @@ func _spawn_garbage_marker() -> void:
 
 	var marker: Area3D = MARKER_SCENE.instantiate()
 	marker_container.add_child(marker)
-	marker.position.z = SPAWN_Z
-	marker.position.y = 0.03
+	marker.position.z = SPAWN_Z - randf_range(0.0, 15.0)
+	marker.position.y = 0.05
 	marker.setup(randi() % 3)
 
-	garbage_timer.start(randf_range(1.8, 3.5))
+	garbage_timer.start(randf_range(2.5, 4.0))
 
 func _on_truck_died() -> void:
 	obstacle_timer.stop()
