@@ -3,7 +3,7 @@
 # When the truck reaches this marker it collects the garbage (+10 score).
 extends Area3D
 
-const LANE_X: Array[float] = [-2.0, 0.0, 2.0]
+const LANE_X: Array[float] = [-3.0, 0.0, 3.0]
 
 @onready var marker_mesh: MeshInstance3D = $MarkerMesh
 @onready var garbage_bag: MeshInstance3D = $GarbageBag
