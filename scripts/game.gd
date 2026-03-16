@@ -11,6 +11,8 @@ extends Node3D
 @onready var score_label: Label = $HUD/ScoreLabel
 @onready var garbage_label: Label = $HUD/GarbageLabel
 @onready var distance_label: Label = $HUD/DistanceLabel
+@onready var health_label: Label = $HUD/HealthLabel
+@onready var health_bar: ProgressBar = $HUD/HealthBar
 @onready var obstacle_timer: Timer = $ObstacleTimer
 @onready var garbage_timer: Timer = $GarbageTimer
 
@@ -23,10 +25,14 @@ const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
 const SPAWN_Z: float = -90.0
 const DESPAWN_Z: float = 25.0
-const BUILDING_X_NEAR: float = 9.0    # First row — inner edge meets footpath at ±6.5
+const BUILDING_X_NEAR: float = 9.0    # First row — inner edge meets footpath at ±7.0
 const BUILDING_X_FAR: float = 15.0    # Second row (behind first)
 const BUILDINGS_PER_SEGMENT: int = 2  # Buildings per segment per side
 const MOON_POSITION := Vector3(25.0, 45.0, -120.0)
+const OBSTACLE_TIMER_MIN_RANDOMNESS: float = 0.0
+const OBSTACLE_TIMER_MAX_RANDOMNESS: float = 0.8
+const HEALTH_GOOD_THRESHOLD: int = 60
+const HEALTH_WARNING_THRESHOLD: int = 30
 
 var road_segments: Array[Node3D] = []
 var left_buildings: Array[Node3D] = []
@@ -34,15 +40,29 @@ var right_buildings: Array[Node3D] = []
 var left_buildings_far: Array[Node3D] = []
 var right_buildings_far: Array[Node3D] = []
 
+# Cached StyleBoxFlat instances for health bar colour changes
+var _style_health_good: StyleBoxFlat = StyleBoxFlat.new()
+var _style_health_warning: StyleBoxFlat = StyleBoxFlat.new()
+var _style_health_critical: StyleBoxFlat = StyleBoxFlat.new()
+
 func _ready() -> void:
 	truck.died.connect(_on_truck_died)
+	GameManager.health_changed.connect(_on_health_changed)
 	_setup_road()
 	_setup_buildings()
 	_create_moon()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
-	obstacle_timer.start(2.5)
+	obstacle_timer.start(4.0)
 	garbage_timer.start(2.0)
+	# Initialise health bar display
+	health_bar.max_value = GameManager.MAX_HEALTH
+	health_bar.value = GameManager.health
+	# Pre-build cached style boxes for health bar colour transitions
+	_style_health_good.bg_color = Color(0.1, 0.8, 0.1)
+	_style_health_warning.bg_color = Color(1.0, 0.75, 0.0)
+	_style_health_critical.bg_color = Color(0.9, 0.1, 0.1)
+	_update_health_bar_color(GameManager.health)
 
 func _process(delta: float) -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -89,6 +109,7 @@ func _process(delta: float) -> void:
 	score_label.text = "Score: %d" % GameManager.score
 	garbage_label.text = "Bags: %d" % GameManager.garbage_collected
 	distance_label.text = "%dm" % int(GameManager.distance)
+	health_label.text = "HP: %d" % GameManager.health
 
 func _setup_road() -> void:
 	for i in range(NUM_SEGMENTS):
@@ -209,7 +230,7 @@ func _spawn_obstacle() -> void:
 
 	var ratio: float = (GameManager.current_speed - GameManager.BASE_SPEED) / \
 		(GameManager.MAX_SPEED - GameManager.BASE_SPEED)
-	obstacle_timer.start(lerpf(3.5, 1.5, clampf(ratio, 0.0, 1.0)))
+	obstacle_timer.start(lerpf(5.0, 2.5, clampf(ratio, 0.0, 1.0)) + randf_range(OBSTACLE_TIMER_MIN_RANDOMNESS, OBSTACLE_TIMER_MAX_RANDOMNESS))
 
 func _spawn_garbage_marker() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -229,3 +250,17 @@ func _on_truck_died() -> void:
 	GameManager.end_game()
 	await get_tree().create_timer(1.2).timeout
 	get_tree().change_scene_to_file("res://scenes/game_over.tscn")
+
+func _on_health_changed(new_health: int) -> void:
+	health_bar.value = new_health
+	_update_health_bar_color(new_health)
+	if new_health <= 0:
+		truck.die()
+
+func _update_health_bar_color(hp: int) -> void:
+	if hp > HEALTH_GOOD_THRESHOLD:
+		health_bar.add_theme_stylebox_override("fill", _style_health_good)
+	elif hp > HEALTH_WARNING_THRESHOLD:
+		health_bar.add_theme_stylebox_override("fill", _style_health_warning)
+	else:
+		health_bar.add_theme_stylebox_override("fill", _style_health_critical)

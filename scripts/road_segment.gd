@@ -11,9 +11,9 @@ const ROAD_HALF_WIDTH: float = 5.0       # Road spans X = -5 to +5 (10 units wid
 const LANE_LINE_X: Array[float] = [-1.5, 1.5]   # Dashed dividers between the 3 lanes
 const EDGE_LINE_X: Array[float] = [-4.5, 4.5]   # Solid white edge lines
 const CURB_X_SIGN: Array[int] = [-1, 1]          # Curb side sign multipliers
-const FOOTPATH_HALF_WIDTH: float = 0.75           # Half of 1.5-unit footpath width
-const FOOTPATH_CENTER_OFFSET: float = 5.75        # |X| of footpath centre (5.0 + 0.75)
-const FOOTPATH_HEIGHT: float = 0.15               # How high the footpath sits above Y = 0
+const FOOTPATH_HALF_WIDTH: float = 1.0            # Half of 2.0-unit footpath width
+const FOOTPATH_CENTER_OFFSET: float = 6.0         # |X| of footpath centre (5.0 + 1.0)
+const FOOTPATH_HEIGHT: float = 0.25               # How high the footpath sits above Y = 0
 
 # Dashed lane line parameters
 const DASH_LENGTH: float = 3.0
@@ -86,10 +86,10 @@ func _build_curbs() -> void:
 		curb.position = Vector3(s * (ROAD_HALF_WIDTH + 0.125), 0.1, 0.0)
 		add_child(curb)
 
-# --- Raised concrete footpaths (X = ±5.0 to ±6.5) ---
+# --- Raised concrete footpaths (X = ±5.0 to ±7.0) ---
 func _build_footpaths() -> void:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.72, 0.70, 0.68, 1.0)
+	mat.albedo_color = Color(0.78, 0.76, 0.73, 1.0)
 
 	for s: int in CURB_X_SIGN:
 		var fp := MeshInstance3D.new()
@@ -97,7 +97,7 @@ func _build_footpaths() -> void:
 		mesh.size = Vector3(FOOTPATH_HALF_WIDTH * 2.0, FOOTPATH_HEIGHT, SEGMENT_LENGTH)
 		fp.mesh = mesh
 		fp.material_override = mat
-		# Centre at ±5.75; top of footpath sits at Y = FOOTPATH_HEIGHT (raised above road)
+		# Centre at ±6.0; top of footpath sits at Y = FOOTPATH_HEIGHT (raised above road)
 		fp.position = Vector3(s * FOOTPATH_CENTER_OFFSET, FOOTPATH_HEIGHT * 0.5, 0.0)
 		add_child(fp)
 
