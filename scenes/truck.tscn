@@ -1,0 +1,46 @@
+[gd_scene load_steps=7 format=3 uid="uid://truck3d"]
+
+[ext_resource type="Script" path="res://scripts/truck.gd" id="1_truck"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(1.8, 0.8, 3.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cabin"]
+size = Vector3(1.6, 1.0, 1.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_truck"]
+size = Vector3(1.6, 1.4, 3.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_green"]
+albedo_color = Color(0.18, 0.68, 0.18, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_window"]
+albedo_color = Color(0.55, 0.78, 0.95, 1)
+metallic = 0.3
+roughness = 0.15
+
+[node name="Truck" type="CharacterBody3D"]
+script = ExtResource("1_truck")
+
+[node name="TruckBody" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = SubResource("Mat_green")
+
+[node name="Cabin" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -0.5)
+mesh = SubResource("BoxMesh_cabin")
+surface_material_override/0 = SubResource("Mat_green")
+
+[node name="Windshield" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -1.35)
+mesh = SubResource("BoxMesh_cabin")
+surface_material_override/0 = SubResource("Mat_window")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_truck")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 4.5, 9.0)
+fov = 70.0

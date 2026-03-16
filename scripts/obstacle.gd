@@ -1,36 +1,32 @@
 # obstacle.gd
-# Controls individual obstacles that move left and despawn off-screen.
-extends Area2D
+# A 3D obstacle on the road. Kills the truck on collision.
+extends Area3D
 
-@export var move_speed: float = 300.0  # Speed set by spawner
+@onready var mesh_instance: MeshInstance3D = $Mesh
+@onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
-@onready var body_rect: ColorRect = $BodyRect
-@onready var collision_shape: CollisionShape2D = $CollisionShape2D
-
-# Off-screen despawn threshold
-const DESPAWN_X: float = -150.0
+const LANE_X: Array[float] = [-2.0, 0.0, 2.0]
 
 func _ready() -> void:
-	# Connect body entered signal to detect player collision
-	body_entered.connect(_on_body_entered)
+body_entered.connect(_on_body_entered)
 
-func _process(delta: float) -> void:
-	# Move left at current game speed
-	position.x -= move_speed * delta
-	
-	# Despawn when off the left side of the screen
-	if position.x < DESPAWN_X:
-		queue_free()
+func setup(lane: int, color: Color) -> void:
+position.x = LANE_X[lane]
 
-func set_size(new_size: Vector2) -> void:
-	# Resize the visual rect and collision shape
-	if body_rect:
-		body_rect.size = new_size
-		body_rect.position = -new_size / 2.0
-	if collision_shape and collision_shape.shape is RectangleShape2D:
-		collision_shape.shape.size = new_size
+var box := BoxMesh.new()
+box.size = Vector3(1.6, 1.2, 1.8)
+mesh_instance.mesh = box
+mesh_instance.position.y = 0.6
 
-func _on_body_entered(body: Node2D) -> void:
-	# If the player touches this obstacle, trigger game over
-	if body.is_in_group("player"):
-		body.die()
+var mat := StandardMaterial3D.new()
+mat.albedo_color = color
+mesh_instance.material_override = mat
+
+var shape := BoxShape3D.new()
+shape.size = Vector3(1.6, 1.2, 1.8)
+collision_shape.shape = shape
+collision_shape.position.y = 0.6
+
+func _on_body_entered(body: Node3D) -> void:
+if body.is_in_group("truck"):
+body.die()
