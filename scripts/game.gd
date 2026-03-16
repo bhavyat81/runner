@@ -23,8 +23,8 @@ const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
 const SPAWN_Z: float = -90.0
 const DESPAWN_Z: float = 25.0
-const BUILDING_X_NEAR: float = 8.0   # First row (close to road)
-const BUILDING_X_FAR: float = 14.0   # Second row (behind first)
+const BUILDING_X_NEAR: float = 9.0    # First row — inner edge meets footpath at ±6.5
+const BUILDING_X_FAR: float = 15.0    # Second row (behind first)
 const BUILDINGS_PER_SEGMENT: int = 2  # Buildings per segment per side
 const MOON_POSITION := Vector3(25.0, 45.0, -120.0)
 

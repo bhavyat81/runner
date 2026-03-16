@@ -6,7 +6,7 @@ extends Area3D
 @onready var mesh_instance: MeshInstance3D = $Mesh
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
-const LANE_X: Array[float] = [-2.0, 0.0, 2.0]
+const LANE_X: Array[float] = [-3.0, 0.0, 3.0]
 
 func _ready() -> void:
 	collision_layer = 2

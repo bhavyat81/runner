@@ -3,8 +3,8 @@
 # Handles lane switching, jumping, and death detection.
 extends CharacterBody3D
 
-# Lane X positions: left=-2, center=0, right=2
-const LANES: Array[float] = [-2.0, 0.0, 2.0]
+# Lane X positions: left=-3, center=0, right=3
+const LANES: Array[float] = [-3.0, 0.0, 3.0]
 var current_lane: int = 1  # Start in centre lane
 
 # Movement constants
