@@ -18,10 +18,10 @@ size = Vector3(0.3, 0.25, 40.0)
 size = Vector3(2.5, 0.08, 40.0)
 
 [sub_resource type="StandardMaterial3D" id="Mat_road"]
-albedo_color = Color(0.3, 0.3, 0.32, 1)
+albedo_color = Color(0.45, 0.45, 0.45, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_line"]
-albedo_color = Color(0.95, 0.95, 0.95, 1)
+albedo_color = Color(1.0, 1.0, 1.0, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_curb"]
 albedo_color = Color(0.6, 0.6, 0.58, 1)
