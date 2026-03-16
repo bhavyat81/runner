@@ -9,15 +9,15 @@ extends Control
 @onready var menu_btn: Button = $Panel/VBox/ButtonRow/MenuButton
 
 func _ready() -> void:
-final_score.text = "Score: %d" % GameManager.score
-garbage_label.text = "Bags Collected: %d" % GameManager.garbage_collected
-best_score.text = "Best: %d" % GameManager.high_score
-restart_btn.pressed.connect(_on_restart)
-menu_btn.pressed.connect(_on_menu)
-get_tree().paused = false
+	final_score.text = "Score: %d" % GameManager.score
+	garbage_label.text = "Bags Collected: %d" % GameManager.garbage_collected
+	best_score.text = "Best: %d" % GameManager.high_score
+	restart_btn.pressed.connect(_on_restart)
+	menu_btn.pressed.connect(_on_menu)
+	get_tree().paused = false
 
 func _on_restart() -> void:
-GameManager.start_game()
+	GameManager.start_game()
 
 func _on_menu() -> void:
-GameManager.go_to_main_menu()
+	GameManager.go_to_main_menu()
