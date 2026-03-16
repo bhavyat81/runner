@@ -1,115 +1,149 @@
 # game.gd
-# Main game scene controller. Manages spawning, scoring, HUD, and game over.
-extends Node2D
+# Main 3D game scene controller.
+# Manages road recycling, building placement, obstacle/garbage spawning, and HUD.
+extends Node3D
 
-# References to scene nodes
-@onready var player: CharacterBody2D = $Player
+@onready var truck: CharacterBody3D = $Truck
+@onready var road_container: Node3D = $RoadContainer
+@onready var building_container: Node3D = $BuildingContainer
+@onready var obstacle_container: Node3D = $ObstacleContainer
+@onready var marker_container: Node3D = $MarkerContainer
 @onready var score_label: Label = $HUD/ScoreLabel
-@onready var pause_button: Button = $HUD/PauseButton
-@onready var obstacle_spawner: Timer = $ObstacleSpawner
-@onready var score_timer: Timer = $ScoreTimer
-@onready var ground: StaticBody2D = $Ground
-@onready var obstacle_container: Node2D = $Obstacles
-@onready var game_over_overlay: Control = $HUD/GameOverOverlay
+@onready var garbage_label: Label = $HUD/GarbageLabel
+@onready var distance_label: Label = $HUD/DistanceLabel
+@onready var obstacle_timer: Timer = $ObstacleTimer
+@onready var garbage_timer: Timer = $GarbageTimer
 
-# Obstacle scene to instantiate
-const OBSTACLE_SCENE = preload("res://scenes/obstacle.tscn")
+const ROAD_SEGMENT_SCENE := preload("res://scenes/road_segment.tscn")
+const BUILDING_SCENE := preload("res://scenes/building.tscn")
+const OBSTACLE_SCENE := preload("res://scenes/obstacle.tscn")
+const MARKER_SCENE := preload("res://scenes/garbage_marker.tscn")
+
+const SEGMENT_LENGTH: float = 40.0
+const NUM_SEGMENTS: int = 8
+const SPAWN_Z: float = -90.0
+const DESPAWN_Z: float = 25.0
+const BUILDING_X: float = 6.5
+
+var road_segments: Array[Node3D] = []
+var left_buildings: Array[Node3D] = []
+var right_buildings: Array[Node3D] = []
 
 func _ready() -> void:
-	# Connect player death signal
-	player.died.connect(_on_player_died)
-	
-	# Connect timer signals
-	obstacle_spawner.timeout.connect(_on_obstacle_spawner_timeout)
-	score_timer.timeout.connect(_on_score_timer_timeout)
-	
-	# Connect pause button
-	pause_button.pressed.connect(_on_pause_button_pressed)
-	
-	# Connect game over overlay buttons
-	game_over_overlay.get_node("Panel/VBoxContainer/ButtonRow/RestartButton").pressed.connect(_on_restart_pressed)
-	game_over_overlay.get_node("Panel/VBoxContainer/ButtonRow/MenuButton").pressed.connect(_on_menu_pressed)
-	
-	# Hide game over overlay at start
-	game_over_overlay.visible = false
-	
-	# Start timers
-	obstacle_spawner.start()
-	score_timer.start()
-	
-	# Update score display
-	_update_score_display()
+truck.died.connect(_on_truck_died)
+_setup_road()
+_setup_buildings()
+obstacle_timer.timeout.connect(_spawn_obstacle)
+garbage_timer.timeout.connect(_spawn_garbage_marker)
+obstacle_timer.start(2.5)
+garbage_timer.start(2.0)
 
 func _process(delta: float) -> void:
-	if GameManager.current_state != GameManager.GameState.PLAYING:
-		return
-	
-	# Update game speed over time
-	GameManager.update_speed(delta)
-	
-	# Sync current speed to all active obstacles
-	for obstacle in obstacle_container.get_children():
-		obstacle.move_speed = GameManager.current_speed
+if GameManager.current_state != GameManager.GameState.PLAYING:
+return
 
-func _on_obstacle_spawner_timeout() -> void:
-	if GameManager.current_state != GameManager.GameState.PLAYING:
-		return
-	_spawn_obstacle()
-	# Dynamic spawn interval: decreases as speed increases
-	var base_interval = 1.8
-	var min_interval = 0.7
-	var speed_ratio = (GameManager.current_speed - GameManager.BASE_SPEED) / (GameManager.MAX_SPEED - GameManager.BASE_SPEED)
-	var interval = lerp(base_interval, min_interval, speed_ratio)
-	obstacle_spawner.wait_time = interval + randf_range(-0.2, 0.2)
-	obstacle_spawner.start()
+GameManager.update_game(delta)
+var spd: float = GameManager.current_speed
+
+# Scroll road segments (recycle when they pass the camera)
+for seg in road_segments:
+seg.position.z += spd * delta
+if seg.position.z >= DESPAWN_Z:
+seg.position.z -= SEGMENT_LENGTH * NUM_SEGMENTS
+
+# Scroll buildings (same recycling logic)
+for b in left_buildings:
+b.position.z += spd * delta
+if b.position.z >= DESPAWN_Z:
+b.position.z -= SEGMENT_LENGTH * NUM_SEGMENTS
+for b in right_buildings:
+b.position.z += spd * delta
+if b.position.z >= DESPAWN_Z:
+b.position.z -= SEGMENT_LENGTH * NUM_SEGMENTS
+
+# Scroll and despawn obstacles and markers
+for child in obstacle_container.get_children():
+child.position.z += spd * delta
+if child.position.z >= DESPAWN_Z:
+child.queue_free()
+for child in marker_container.get_children():
+child.position.z += spd * delta
+if child.position.z >= DESPAWN_Z:
+child.queue_free()
+
+# Update HUD
+score_label.text = "Score: %d" % GameManager.score
+garbage_label.text = "Bags: %d" % GameManager.garbage_collected
+distance_label.text = "%dm" % int(GameManager.distance)
+
+func _setup_road() -> void:
+for i in range(NUM_SEGMENTS):
+var seg: Node3D = ROAD_SEGMENT_SCENE.instantiate()
+road_container.add_child(seg)
+seg.position.z = -SEGMENT_LENGTH * i
+road_segments.append(seg)
+
+func _setup_buildings() -> void:
+for i in range(NUM_SEGMENTS):
+var z_pos: float = -SEGMENT_LENGTH * i
+
+var lb: Node3D = BUILDING_SCENE.instantiate()
+building_container.add_child(lb)
+lb.position = Vector3(-BUILDING_X, 0.0, z_pos)
+lb.setup(randf_range(4.0, 14.0), _random_building_color())
+left_buildings.append(lb)
+
+var rb: Node3D = BUILDING_SCENE.instantiate()
+building_container.add_child(rb)
+rb.position = Vector3(BUILDING_X, 0.0, z_pos)
+rb.setup(randf_range(4.0, 14.0), _random_building_color())
+right_buildings.append(rb)
+
+func _random_building_color() -> Color:
+var palette := [
+Color(0.5, 0.5, 0.55, 1),   # Gray
+Color(0.55, 0.45, 0.35, 1), # Brown
+Color(0.65, 0.6, 0.5, 1),   # Beige
+Color(0.4, 0.45, 0.5, 1),   # Blue-gray
+Color(0.45, 0.5, 0.45, 1),  # Muted green
+]
+return palette[randi() % palette.size()]
 
 func _spawn_obstacle() -> void:
-	var obstacle = OBSTACLE_SCENE.instantiate()
-	obstacle_container.add_child(obstacle)
-	
-	# Randomise obstacle dimensions
-	var width = randf_range(30, 60)
-	var height = randf_range(40, 90)
-	obstacle.set_size(Vector2(width, height))
-	
-	# Place obstacle at the right edge, sitting on the ground surface (y = 648)
-	obstacle.position = Vector2(1380.0, 648.0 - height / 2.0)
-	obstacle.move_speed = GameManager.current_speed
-	
-	# Random colour for variety
-	var colors = [
-		Color(0.96, 0.26, 0.21),  # Red
-		Color(1.0, 0.60, 0.00),   # Orange
-		Color(0.93, 0.12, 0.39),  # Pink
-	]
-	obstacle.get_node("BodyRect").color = colors[randi() % colors.size()]
+if GameManager.current_state != GameManager.GameState.PLAYING:
+return
 
-func _on_score_timer_timeout() -> void:
-	if GameManager.current_state == GameManager.GameState.PLAYING:
-		GameManager.add_score(1)
-		_update_score_display()
+var obs: Area3D = OBSTACLE_SCENE.instantiate()
+obstacle_container.add_child(obs)
+obs.position.z = SPAWN_Z
 
-func _update_score_display() -> void:
-	score_label.text = "Score: " + str(GameManager.score)
+var colors := [
+Color(1.0, 0.25, 0.25, 1), # Red car
+Color(1.0, 0.55, 0.05, 1), # Orange barrier
+Color(1.0, 0.9, 0.1, 1),   # Yellow cone
+]
+obs.setup(randi() % 3, colors[randi() % colors.size()])
 
-func _on_player_died() -> void:
-	obstacle_spawner.stop()
-	score_timer.stop()
-	GameManager.end_game()
-	game_over_overlay.get_node("Panel/VBoxContainer/FinalScoreLabel").text = "Score: " + str(GameManager.score)
-	game_over_overlay.get_node("Panel/VBoxContainer/HighScoreLabel").text = "Best: " + str(GameManager.high_score)
-	game_over_overlay.visible = true
+# Dynamically adjust spawn interval as speed increases
+var ratio: float = (GameManager.current_speed - GameManager.BASE_SPEED) / \
+(GameManager.MAX_SPEED - GameManager.BASE_SPEED)
+obstacle_timer.start(lerpf(3.5, 1.2, clampf(ratio, 0.0, 1.0)))
 
-func _on_pause_button_pressed() -> void:
-	if GameManager.current_state == GameManager.GameState.PLAYING:
-		GameManager.pause_game()
-		pause_button.text = "▶"
-	elif GameManager.current_state == GameManager.GameState.PAUSED:
-		GameManager.resume_game()
-		pause_button.text = "⏸"
+func _spawn_garbage_marker() -> void:
+if GameManager.current_state != GameManager.GameState.PLAYING:
+return
 
-func _on_restart_pressed() -> void:
-	GameManager.start_game()
+var marker: Area3D = MARKER_SCENE.instantiate()
+marker_container.add_child(marker)
+marker.position.z = SPAWN_Z
+marker.position.y = 0.03
+marker.setup(randi() % 3)
 
-func _on_menu_pressed() -> void:
-	GameManager.go_to_main_menu()
+garbage_timer.start(randf_range(1.8, 3.5))
+
+func _on_truck_died() -> void:
+obstacle_timer.stop()
+garbage_timer.stop()
+GameManager.end_game()
+await get_tree().create_timer(1.2).timeout
+get_tree().change_scene_to_file("res://scenes/game_over.tscn")

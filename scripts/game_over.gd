@@ -1,27 +1,23 @@
 # game_over.gd
-# Standalone game over scene (alternative to overlay).
-# Used if you want a separate scene instead of an overlay.
+# Game Over screen showing final stats and restart / menu buttons.
 extends Control
 
-@onready var final_score_label: Label = $VBoxContainer/FinalScoreLabel
-@onready var high_score_label: Label = $VBoxContainer/HighScoreLabel
-@onready var restart_button: Button = $VBoxContainer/RestartButton
-@onready var menu_button: Button = $VBoxContainer/MenuButton
+@onready var final_score: Label = $Panel/VBox/FinalScore
+@onready var garbage_label: Label = $Panel/VBox/GarbageLabel
+@onready var best_score: Label = $Panel/VBox/BestScore
+@onready var restart_btn: Button = $Panel/VBox/ButtonRow/RestartButton
+@onready var menu_btn: Button = $Panel/VBox/ButtonRow/MenuButton
 
 func _ready() -> void:
-	# Display scores
-	final_score_label.text = "Score: " + str(GameManager.score)
-	high_score_label.text = "Best: " + str(GameManager.high_score)
-	
-	# Connect buttons
-	restart_button.pressed.connect(_on_restart_pressed)
-	menu_button.pressed.connect(_on_menu_pressed)
-	
-	# Make sure tree is not paused
-	get_tree().paused = false
+final_score.text = "Score: %d" % GameManager.score
+garbage_label.text = "Bags Collected: %d" % GameManager.garbage_collected
+best_score.text = "Best: %d" % GameManager.high_score
+restart_btn.pressed.connect(_on_restart)
+menu_btn.pressed.connect(_on_menu)
+get_tree().paused = false
 
-func _on_restart_pressed() -> void:
-	GameManager.start_game()
+func _on_restart() -> void:
+GameManager.start_game()
 
-func _on_menu_pressed() -> void:
-	GameManager.go_to_main_menu()
+func _on_menu() -> void:
+GameManager.go_to_main_menu()
