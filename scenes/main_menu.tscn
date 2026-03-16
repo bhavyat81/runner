@@ -1,0 +1,91 @@
+[gd_scene load_steps=3 format=3 uid="uid://main_menu"]
+
+[ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_main_menu"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.102, 0.102, 0.18, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.102, 0.102, 0.18, 1)
+
+[node name="GroundStrip" type="ColorRect" parent="."]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 660.0
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0.086, 0.129, 0.243, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 120.0
+offset_right = 1280.0
+offset_bottom = 280.0
+theme_override_font_sizes/font_size = 96
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "RUNNER"
+theme_override_colors/font_color = Color(0.918, 0.271, 0.376, 1)
+
+[node name="SubtitleLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 280.0
+offset_right = 1280.0
+offset_bottom = 340.0
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Tap or press SPACE to jump!"
+theme_override_colors/font_color = Color(0.8, 0.8, 0.9, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 440.0
+offset_top = 360.0
+offset_right = 840.0
+offset_bottom = 560.0
+theme_override_constants/separation = 20
+
+[node name="PlayButton" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(400, 80)
+theme_override_font_sizes/font_size = 36
+text = "▶  PLAY"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="HighScoreLabel" type="Label" parent="VBoxContainer"]
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+text = "Best: ---"
+theme_override_colors/font_color = Color(1.0, 0.84, 0.0, 1)
+
+[node name="VersionLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 0.0
+offset_top = 690.0
+offset_right = 1280.0
+offset_bottom = 720.0
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+text = "v1.0"
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 1)

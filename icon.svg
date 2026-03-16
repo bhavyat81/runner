@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="16" fill="#1a1a2e"/>
+  <!-- Ground -->
+  <rect x="0" y="96" width="128" height="32" fill="#16213e"/>
+  <!-- Player (square character) -->
+  <rect x="24" y="60" width="32" height="32" rx="4" fill="#e94560"/>
+  <!-- Eyes -->
+  <rect x="32" y="68" width="6" height="6" rx="1" fill="white"/>
+  <rect x="42" y="68" width="6" height="6" rx="1" fill="white"/>
+  <!-- Obstacle (spike) -->
+  <polygon points="88,96 100,64 112,96" fill="#f5a623"/>
+  <!-- Score text -->
+  <text x="64" y="44" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">RUNNER</text>
+</svg>

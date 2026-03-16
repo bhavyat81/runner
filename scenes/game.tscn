@@ -1,0 +1,158 @@
+[gd_scene load_steps=7 format=3 uid="uid://game"]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
+size = Vector2(3840, 48)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gameover"]
+bg_color = Color(0, 0, 0, 0.88)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_restart"]
+bg_color = Color(0.918, 0.271, 0.376, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_menu"]
+bg_color = Color(0.2, 0.4, 0.8, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Sky" type="ColorRect" parent="."]
+z_index = -10
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1280.0
+offset_bottom = 648.0
+color = Color(0.055, 0.055, 0.118, 1)
+
+[node name="Ground" type="StaticBody2D" parent="."]
+position = Vector2(1280, 672)
+
+[node name="GroundVisual" type="ColorRect" parent="Ground"]
+offset_left = -1920.0
+offset_top = -24.0
+offset_right = 1920.0
+offset_bottom = 72.0
+color = Color(0.086, 0.129, 0.243, 1)
+
+[node name="GroundLine" type="ColorRect" parent="Ground"]
+offset_left = -1920.0
+offset_top = -26.0
+offset_right = 1920.0
+offset_bottom = -18.0
+color = Color(0.2, 0.6, 1.0, 0.9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+shape = SubResource("RectangleShape2D_ground")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(200, 648)
+
+[node name="Obstacles" type="Node2D" parent="."]
+
+[node name="ObstacleSpawner" type="Timer" parent="."]
+wait_time = 2.0
+autostart = false
+
+[node name="ScoreTimer" type="Timer" parent="."]
+wait_time = 0.1
+autostart = false
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 14.0
+offset_right = 400.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 36
+text = "Score: 0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="PauseButton" type="Button" parent="HUD"]
+offset_left = 1200.0
+offset_top = 14.0
+offset_right = 1265.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 28
+text = "⏸"
+
+[node name="GameOverOverlay" type="Control" parent="HUD"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DimRect" type="ColorRect" parent="HUD/GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Panel" type="PanelContainer" parent="HUD/GameOverOverlay"]
+layout_mode = 1
+offset_left = 365.0
+offset_top = 155.0
+offset_right = 915.0
+offset_bottom = 565.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_gameover")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD/GameOverOverlay/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="GameOverTitle" type="Label" parent="HUD/GameOverOverlay/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(550, 0)
+theme_override_font_sizes/font_size = 60
+horizontal_alignment = 1
+text = "GAME OVER"
+theme_override_colors/font_color = Color(0.918, 0.271, 0.376, 1)
+
+[node name="FinalScoreLabel" type="Label" parent="HUD/GameOverOverlay/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 42
+horizontal_alignment = 1
+text = "Score: 0"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="HighScoreLabel" type="Label" parent="HUD/GameOverOverlay/Panel/VBoxContainer"]
+theme_override_font_sizes/font_size = 30
+horizontal_alignment = 1
+text = "Best: 0"
+theme_override_colors/font_color = Color(1.0, 0.84, 0.0, 1)
+
+[node name="ButtonRow" type="HBoxContainer" parent="HUD/GameOverOverlay/Panel/VBoxContainer"]
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="RestartButton" type="Button" parent="HUD/GameOverOverlay/Panel/VBoxContainer/ButtonRow"]
+custom_minimum_size = Vector2(230, 62)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_restart")
+text = "↺  Restart"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+
+[node name="MenuButton" type="Button" parent="HUD/GameOverOverlay/Panel/VBoxContainer/ButtonRow"]
+custom_minimum_size = Vector2(230, 62)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_menu")
+text = "⌂  Menu"
+theme_override_colors/font_color = Color(1, 1, 1, 1)
