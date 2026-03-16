@@ -20,6 +20,8 @@ metallic = 0.3
 roughness = 0.15
 
 [node name="Truck" type="CharacterBody3D"]
+collision_layer = 1
+collision_mask = 1
 script = ExtResource("1_truck")
 
 [node name="TruckBody" type="MeshInstance3D" parent="."]
