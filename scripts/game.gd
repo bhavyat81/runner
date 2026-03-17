@@ -32,7 +32,6 @@ const MARKER_SCENE := preload("res://scenes/garbage_marker.tscn")
 const SPEED_BOOST_SCENE := preload("res://scenes/speed_boost.tscn")
 const POWERUP_SCENE := preload("res://scenes/powerup.tscn")
 const TRAFFIC_CAR_SCENE := preload("res://scenes/traffic_car.tscn")
-const BOSS_TORNADO_SCENE := preload("res://scenes/boss_tornado.tscn")
 
 const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
@@ -88,7 +87,14 @@ var _powerup_hud_label: Label = null
 var _challenge_hud_label: Label = null
 var _toast_label: Label = null
 var _toast_tween: Tween = null
-var _boss_label: Label = null
+var _phase_label: Label = null
+var _phase_tween: Tween = null
+
+# Environment phase elements
+var _bridge_left: Node3D = null
+var _bridge_right: Node3D = null
+var _tunnel_ceiling: Node3D = null
+var _moon_nodes: Array[Node3D] = []
 
 # Day/Night: int keys 0=Night 1=Dawn 2=Day 3=Dusk
 const DAY_CONFIGS: Dictionary = {
@@ -109,7 +115,6 @@ var _thunder_timer: float = 0.0
 var _rain_nodes: Array[Node3D] = []
 
 var _fly_timer: float = 15.0
-var _boss_instance: Node3D = null
 var _traffic_timer: float = 5.0
 var _powerup_timer: float = 25.0
 
@@ -121,7 +126,6 @@ func _ready() -> void:
 	GameManager.speed_boost_activated.connect(_on_speed_boost_activated)
 	GameManager.powerup_activated.connect(_on_powerup_activated)
 	GameManager.powerup_expired.connect(_on_powerup_expired)
-	GameManager.boss_spawned.connect(_on_boss_spawned)
 	GameManager.environment_changed.connect(_on_environment_changed)
 	var am := get_node_or_null("/root/AchievementManager")
 	if am:
@@ -135,7 +139,8 @@ func _ready() -> void:
 	_setup_combo_announcer()
 	_setup_powerup_hud()
 	_setup_challenge_hud()
-	_setup_boss_label()
+	_setup_phase_label()
+	_setup_environment_elements()
 	_setup_toast()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
@@ -468,28 +473,101 @@ func _update_challenge_hud_labels() -> void:
 		lines.append("* %s [%s]" % [c.get("desc", ""), done_str])
 	_challenge_hud_label.text = "\n".join(lines)
 
-func _setup_boss_label() -> void:
-	var bl_layer := CanvasLayer.new()
-	bl_layer.layer = 11
-	add_child(bl_layer)
-	_boss_label = Label.new()
-	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_boss_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_boss_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_boss_label.add_theme_font_size_override("font_size", 42)
-	_boss_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.0))
-	_boss_label.modulate.a = 0.0
-	_boss_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bl_layer.add_child(_boss_label)
+func _setup_phase_label() -> void:
+	var ph_layer := CanvasLayer.new()
+	ph_layer.layer = 11
+	add_child(ph_layer)
+	_phase_label = Label.new()
+	_phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_phase_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_phase_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_phase_label.add_theme_font_size_override("font_size", 72)
+	_phase_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	_phase_label.modulate.a = 0.0
+	_phase_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ph_layer.add_child(_phase_label)
 
-func _show_boss_message(text: String) -> void:
-	if _boss_label == null:
+func _show_phase_announcement(text: String) -> void:
+	if _phase_label == null:
 		return
-	_boss_label.text = text
-	var tw := create_tween()
-	tw.tween_property(_boss_label, "modulate:a", 1.0, 0.3)
-	tw.tween_interval(2.0)
-	tw.tween_property(_boss_label, "modulate:a", 0.0, 0.5)
+	_phase_label.text = text
+	if _phase_tween:
+		_phase_tween.kill()
+	_phase_tween = create_tween()
+	_phase_label.modulate.a = 0.0
+	_phase_tween.tween_property(_phase_label, "modulate:a", 1.0, 0.4)
+	_phase_tween.tween_interval(2.0)
+	_phase_tween.tween_property(_phase_label, "modulate:a", 0.0, 0.6)
+
+func _setup_environment_elements() -> void:
+	# Bridge railings (hidden initially)
+	_bridge_left = _create_bridge_railing(-6.0)
+	_bridge_right = _create_bridge_railing(6.0)
+	_bridge_left.visible = false
+	_bridge_right.visible = false
+	# Tunnel ceiling with orange lights (hidden initially)
+	_tunnel_ceiling = _create_tunnel_ceiling()
+	_tunnel_ceiling.visible = false
+
+func _create_bridge_railing(x_pos: float) -> Node3D:
+	var railing := Node3D.new()
+	railing.name = "BridgeRailing"
+	add_child(railing)
+	var railing_mesh := BoxMesh.new()
+	railing_mesh.size = Vector3(0.5, 1.2, 220.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = railing_mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.75, 0.78, 0.85)
+	mat.roughness = 0.6
+	mi.material_override = mat
+	mi.position = Vector3(0.0, 0.6, -80.0)
+	railing.add_child(mi)
+	railing.position.x = x_pos
+	return railing
+
+func _create_tunnel_ceiling() -> Node3D:
+	var ceiling := Node3D.new()
+	ceiling.name = "TunnelCeiling"
+	ceiling.position.y = 8.0
+	add_child(ceiling)
+	# Main ceiling slab
+	var ceil_mesh := BoxMesh.new()
+	ceil_mesh.size = Vector3(18.0, 1.2, 220.0)
+	var ci := MeshInstance3D.new()
+	ci.mesh = ceil_mesh
+	var ceil_mat := StandardMaterial3D.new()
+	ceil_mat.albedo_color = Color(0.08, 0.08, 0.1)
+	ci.material_override = ceil_mat
+	ci.position = Vector3(0.0, 0.0, -80.0)
+	ceiling.add_child(ci)
+	# Orange tunnel lights along the ceiling
+	for zi in range(-70, 30, 15):  # span from spawn zone to despawn zone
+		var light := OmniLight3D.new()
+		light.light_color = Color(1.0, 0.55, 0.1)
+		light.light_energy = 2.5
+		light.omni_range = 18.0
+		light.position = Vector3(0.0, -1.0, float(zi))
+		ceiling.add_child(light)
+	return ceiling
+
+func _set_lighting(p_sun_color: Color, p_sun_energy: float,
+		p_ambient: Color, p_sky: Color) -> void:
+	if sun:
+		sun.light_color = p_sun_color
+		sun.light_energy = p_sun_energy
+	if world_env and world_env.environment:
+		var env: Environment = world_env.environment
+		env.ambient_light_color = p_ambient
+		env.background_color = p_sky
+
+func _set_moon_stars_visible(make_visible: bool) -> void:
+	for n in _moon_nodes:
+		if is_instance_valid(n):
+			n.visible = make_visible
+	for sn in _star_nodes:
+		if is_instance_valid(sn):
+			sn.visible = make_visible
 
 func _setup_toast() -> void:
 	var toast_layer := CanvasLayer.new()
@@ -558,11 +636,48 @@ func _on_powerup_activated(type: GameManager.PowerupType) -> void:
 func _on_powerup_expired() -> void:
 	pass
 
-func _on_boss_spawned() -> void:
-	_show_boss_message("BOSS INCOMING!")
-	_spawn_boss()
-
 func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
+	match env:
+		GameManager.GameEnvironment.CITY:
+			building_container.visible = true
+			_set_lighting(
+				Color(0.3, 0.35, 0.55), 0.2,
+				Color(0.15, 0.18, 0.35), Color(0.03, 0.03, 0.12))
+			if _bridge_left: _bridge_left.visible = false
+			if _bridge_right: _bridge_right.visible = false
+			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			_set_moon_stars_visible(true)
+			_show_phase_announcement("CITY")
+		GameManager.GameEnvironment.HIGHWAY:
+			building_container.visible = false
+			_set_lighting(
+				Color(1.0, 0.95, 0.85), 1.4,
+				Color(0.5, 0.55, 0.7), Color(0.2, 0.35, 0.6))
+			if _bridge_left: _bridge_left.visible = false
+			if _bridge_right: _bridge_right.visible = false
+			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			_set_moon_stars_visible(false)
+			_show_phase_announcement("HIGHWAY")
+		GameManager.GameEnvironment.BRIDGE:
+			building_container.visible = false
+			_set_lighting(
+				Color(0.7, 0.85, 1.0), 0.9,
+				Color(0.3, 0.4, 0.6), Color(0.1, 0.2, 0.4))
+			if _bridge_left: _bridge_left.visible = true
+			if _bridge_right: _bridge_right.visible = true
+			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			_set_moon_stars_visible(false)
+			_show_phase_announcement("BRIDGE")
+		GameManager.GameEnvironment.TUNNEL:
+			building_container.visible = false
+			_set_lighting(
+				Color(0.4, 0.3, 0.2), 0.1,
+				Color(0.1, 0.1, 0.1), Color(0.02, 0.02, 0.02))
+			if _bridge_left: _bridge_left.visible = false
+			if _bridge_right: _bridge_right.visible = false
+			if _tunnel_ceiling: _tunnel_ceiling.visible = true
+			_set_moon_stars_visible(false)
+			_show_phase_announcement("TUNNEL")
 	for seg in road_segments:
 		if seg.has_method("apply_environment"):
 			seg.apply_environment(env)
@@ -641,6 +756,7 @@ func _create_moon() -> void:
 	moon.set_surface_override_material(0, mat)
 	moon.position = MOON_POSITION
 	add_child(moon)
+	_moon_nodes.append(moon)
 	var halo := MeshInstance3D.new()
 	var torus := TorusMesh.new()
 	torus.inner_radius = 6.4
@@ -656,6 +772,7 @@ func _create_moon() -> void:
 	halo.set_surface_override_material(0, halo_mat)
 	halo.position = MOON_POSITION
 	add_child(halo)
+	_moon_nodes.append(halo)
 	var crater_mat := StandardMaterial3D.new()
 	crater_mat.albedo_color = Color(0.68, 0.65, 0.58, 1.0)
 	crater_mat.emission_enabled = true
@@ -676,12 +793,14 @@ func _create_moon() -> void:
 		crater.set_surface_override_material(0, crater_mat)
 		crater.position = MOON_POSITION + cd[0]
 		add_child(crater)
+		_moon_nodes.append(crater)
 	var moon_light := OmniLight3D.new()
 	moon_light.light_color = Color(0.9, 0.88, 0.75)
 	moon_light.light_energy = 0.3
 	moon_light.omni_range = 220.0
 	moon_light.position = MOON_POSITION
 	add_child(moon_light)
+	_moon_nodes.append(moon_light)
 
 func _random_building_color() -> Color:
 	var palette := [
@@ -717,6 +836,9 @@ func _create_stars() -> void:
 		_star_twinkle_offsets.append(randf_range(0.0, TAU))
 
 func _update_day_night() -> void:
+	# Only animate day/night cycle in CITY — other environments set their own lighting
+	if GameManager.current_environment != GameManager.GameEnvironment.CITY:
+		return
 	var cycle_pos: float = fmod(GameManager.distance, 1200.0)
 	var phase_f: float = cycle_pos / 300.0
 	var phase_int: int = int(phase_f) % 4
@@ -939,12 +1061,6 @@ func _spawn_garbage_marker() -> void:
 	marker.position.z = SPAWN_Z - randf_range(0.0, 15.0)
 	marker.position.y = 0.05
 	marker.setup(randi() % 3)
-	if GameManager.boss_active and randf() < 0.6:
-		var extra: Area3D = MARKER_SCENE.instantiate()
-		marker_container.add_child(extra)
-		extra.position.z = SPAWN_Z - randf_range(0.0, 10.0)
-		extra.position.y = 0.05
-		extra.setup(randi() % 3)
 	var base_interval: float = lerpf(2.5, 1.5, clampf(float(wave) * 0.1, 0.0, 1.0))
 	garbage_timer.start(randf_range(base_interval, base_interval + 1.5))
 
@@ -987,21 +1103,6 @@ func _spawn_traffic_car() -> void:
 	car.position.z = SPAWN_Z
 	car.position.y = 0.0
 	car.setup(randi() % 3, randf() < 0.4)
-
-func _spawn_boss() -> void:
-	if _boss_instance and is_instance_valid(_boss_instance):
-		return
-	GameManager.boss_active = true
-	var boss: Area3D = BOSS_TORNADO_SCENE.instantiate()
-	add_child(boss)
-	boss.position = Vector3(0.0, 0.0, SPAWN_Z + 30.0)
-	_boss_instance = boss
-	boss.boss_finished.connect(_on_boss_finished)
-
-func _on_boss_finished() -> void:
-	GameManager.boss_active = false
-	_boss_instance = null
-	_show_boss_message("BOSS DEFEATED! +500")
 
 func _on_truck_died() -> void:
 	play_death_sound()
