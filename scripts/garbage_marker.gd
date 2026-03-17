@@ -8,7 +8,7 @@ const LANE_X: Array[float] = [-3.0, 0.0, 3.0]
 const GARBAGE_BAG_COLOR := Color(0.15, 0.55, 0.15, 1.0)
 
 # Proximity to truck (Z) at which the bag starts falling and tick mark appears
-const PROXIMITY_TRIGGER_Z: float = -15.0
+const PROXIMITY_TRIGGER_Z: float = -27.0
 # Chance (~45%) that this garbage is harmful (red ✗)
 const HARMFUL_CHANCE: float = 0.45
 
@@ -24,9 +24,9 @@ var is_harmful: bool = false
 var pulse_time: float = 0.0
 var tick_label: Label3D = null
 
-const BAG_START_Y: float = 12.0
+const BAG_START_Y: float = 10.0
 const BAG_END_Y: float = 0.5
-const BAG_FALL_SPEED: float = 8.0
+const BAG_FALL_SPEED: float = 5.5
 const TICK_MARK_FONT_SIZE: int = 210
 
 func _ready() -> void:
