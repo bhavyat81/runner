@@ -88,9 +88,6 @@ func _process(delta: float) -> void:
 	var mat: StandardMaterial3D = mesh_instance.material_override
 	if mat:
 		mat.emission_energy_multiplier = lerpf(2.0, 5.0, pulse)
-	# Breathing scale animation (0.9 to 1.1)
-	var breath_scale := lerpf(0.9, 1.1, pulse)
-	mesh_instance.scale = Vector3(breath_scale, breath_scale, breath_scale)
 	# Slow spin
 	rotation_degrees.y += 90.0 * delta
 
