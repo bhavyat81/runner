@@ -13,6 +13,15 @@ const BILLBOARD_COLORS: Array[Color] = [
 	Color(0.0, 1.0, 0.2),    # Green
 	Color(1.0, 0.3, 0.0),    # Orange
 ]
+const SIGN_TEXTS: Array[String] = [
+	"NEON", "RUSH", "24/7", "OPEN", "CAFE", "PIZZA",
+	"BAR", "TAXI", "HOTEL", "SHOP", "EXIT", "DANCE",
+	"CLUB", "NEWS", "SALE",
+]
+const SIGN_FONT_SCALE: float = 55.0   # pixels per unit of billboard height
+const SIGN_FONT_MIN: int = 32
+const SIGN_FONT_MAX: int = 128
+const SIGN_OUTLINE_SIZE: int = 4
 var _billboard_mat: StandardMaterial3D = null
 var _billboard_color_idx: int = 0
 var _billboard_timer: float = 0.0
@@ -80,6 +89,18 @@ func _add_billboard(height: float, width: float, depth: float) -> void:
 	sign_node.material_override = _billboard_mat
 	sign_node.position = Vector3(0.0, b_y, depth * 0.5 + 0.16)
 	add_child(sign_node)
+
+	# Text label on the billboard
+	var label := Label3D.new()
+	label.text = SIGN_TEXTS[randi() % SIGN_TEXTS.size()]
+	label.font_size = int(clampf(b_height * SIGN_FONT_SCALE, SIGN_FONT_MIN, SIGN_FONT_MAX))
+	label.modulate = Color.WHITE
+	label.outline_modulate = Color(0.0, 0.0, 0.0, 0.9)
+	label.outline_size = SIGN_OUTLINE_SIZE
+	label.position = Vector3(0.0, b_y, depth * 0.5 + 0.21)
+	label.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	label.no_depth_test = false
+	add_child(label)
 
 func _add_windows(height: float, width: float, depth: float) -> void:
 	# Create two window materials — lit and dark

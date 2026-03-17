@@ -78,9 +78,6 @@ var _flash_rect: ColorRect = null
 const _flash_duration: float = 0.3
 var _flash_timer: float = 0.0
 
-var _speed_line_rects: Array[ColorRect] = []
-const SPEED_LINE_COUNT: int = 10
-
 var _combo_label: Label = null
 var _combo_tween: Tween = null
 var _powerup_hud_label: Label = null
@@ -89,6 +86,10 @@ var _toast_label: Label = null
 var _toast_tween: Tween = null
 var _phase_label: Label = null
 var _phase_tween: Tween = null
+var _pre_power_hud_label: Label = null
+var _ghost_tween: Tween = null
+const HEADSTART_FOV: float = 85.0
+const GHOST_MODE_ALPHA: float = 0.35
 
 # Environment phase elements
 var _bridge_left: Node3D = null
@@ -127,6 +128,7 @@ func _ready() -> void:
 	GameManager.powerup_activated.connect(_on_powerup_activated)
 	GameManager.powerup_expired.connect(_on_powerup_expired)
 	GameManager.environment_changed.connect(_on_environment_changed)
+	GameManager.pre_game_power_expired.connect(_on_pre_game_power_expired)
 	var am := get_node_or_null("/root/AchievementManager")
 	if am:
 		am.achievement_unlocked.connect(_on_achievement_unlocked)
@@ -135,13 +137,13 @@ func _ready() -> void:
 	_create_moon()
 	_create_stars()
 	_setup_screen_flash()
-	_setup_speed_lines()
 	_setup_combo_announcer()
 	_setup_powerup_hud()
 	_setup_challenge_hud()
 	_setup_phase_label()
 	_setup_environment_elements()
 	_setup_toast()
+	_setup_pre_power_hud()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
 	boost_timer.timeout.connect(_spawn_speed_boost)
@@ -174,6 +176,8 @@ func _ready() -> void:
 		pause_menu_instance = pause_menu_scene.instantiate()
 		$HUD.add_child(pause_menu_instance)
 		pause_menu_instance.hide()
+	# Activate visual effects for pre-game power
+	_activate_pre_game_power_visuals()
 
 func _process(delta: float) -> void:
 	if GameManager.current_state == GameManager.GameState.PAUSED:
@@ -266,8 +270,8 @@ func _process(delta: float) -> void:
 	distance_label.text = "%dm" % int(GameManager.distance)
 	health_label.text = "HP: %d" % GameManager.health
 	_update_fov(delta)
-	_update_speed_lines()
 	_update_powerup_hud()
+	_update_pre_power_hud()
 	if shake_duration > 0.0:
 		shake_duration -= delta
 		if shake_duration <= 0.0:
@@ -324,50 +328,11 @@ func _update_fov(delta: float) -> void:
 		(GameManager.MAX_SPEED - GameManager.BASE_SPEED), 0.0, 1.0)
 	var boost_bonus: float = 10.0 if GameManager.speed_boost_active else 0.0
 	var target_fov: float = BASE_FOV + speed_ratio * (MAX_FOV - BASE_FOV) + boost_bonus
+	# Headstart power: extra-wide FOV for motion-blur feel
+	if GameManager.power_active and GameManager.selected_power == GameManager.PreGamePower.HEADSTART:
+		target_fov = HEADSTART_FOV
 	if not truck.is_dead:
 		camera.fov = lerpf(camera.fov, target_fov, 4.0 * delta)
-
-func _setup_speed_lines() -> void:
-	var sl_layer := CanvasLayer.new()
-	sl_layer.layer = 8
-	add_child(sl_layer)
-	for _i in range(SPEED_LINE_COUNT):
-		var rect := ColorRect.new()
-		rect.color = Color(1.0, 1.0, 1.0, 0.0)
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sl_layer.add_child(rect)
-		_speed_line_rects.append(rect)
-
-func _update_speed_lines() -> void:
-	var speed_ratio: float = clampf(
-		(GameManager.current_speed - GameManager.BASE_SPEED * 1.3) /
-		(GameManager.MAX_SPEED - GameManager.BASE_SPEED * 1.3), 0.0, 1.0)
-	var is_boost: bool = GameManager.speed_boost_active
-	var base_alpha: float = speed_ratio * 0.4
-	if is_boost:
-		base_alpha = minf(base_alpha + 0.25, 0.65)
-	var viewport_size := get_viewport().get_visible_rect().size
-	for i in range(_speed_line_rects.size()):
-		var rect: ColorRect = _speed_line_rects[i]
-		if base_alpha < 0.02:
-			rect.color.a = 0.0
-			continue
-		var noise_alpha: float = base_alpha * randf_range(0.6, 1.0)
-		var tint: Color = Color(0.85, 0.9, 1.0) if is_boost else Color(1.0, 1.0, 1.0)
-		rect.color = Color(tint.r, tint.g, tint.b, noise_alpha)
-		match i % 4:
-			0:
-				rect.size = Vector2(randf_range(60, 200), randf_range(2, 5))
-				rect.position = Vector2(randf_range(0, viewport_size.x), randf_range(0, 80))
-			1:
-				rect.size = Vector2(randf_range(60, 200), randf_range(2, 5))
-				rect.position = Vector2(randf_range(0, viewport_size.x), viewport_size.y - randf_range(0, 80))
-			2:
-				rect.size = Vector2(randf_range(2, 5), randf_range(40, 150))
-				rect.position = Vector2(randf_range(0, 80), randf_range(0, viewport_size.y))
-			3:
-				rect.size = Vector2(randf_range(2, 5), randf_range(40, 150))
-				rect.position = Vector2(viewport_size.x - randf_range(0, 80), randf_range(0, viewport_size.y))
 
 func _setup_combo_announcer() -> void:
 	var ca_layer := CanvasLayer.new()
@@ -448,6 +413,31 @@ func _update_powerup_hud() -> void:
 	}
 	var name_str: String = pu_names.get(GameManager.active_powerup, "POWERUP")
 	_powerup_hud_label.text = "[%s] %.1fs" % [name_str, GameManager.powerup_timer]
+
+func _setup_pre_power_hud() -> void:
+	var pp_layer := CanvasLayer.new()
+	pp_layer.layer = 7
+	add_child(pp_layer)
+	_pre_power_hud_label = Label.new()
+	_pre_power_hud_label.position = Vector2(16, 228)
+	_pre_power_hud_label.add_theme_font_size_override("font_size", 22)
+	_pre_power_hud_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	_pre_power_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pp_layer.add_child(_pre_power_hud_label)
+
+func _update_pre_power_hud() -> void:
+	if _pre_power_hud_label == null:
+		return
+	if not GameManager.power_active:
+		_pre_power_hud_label.text = ""
+		return
+	var power_names: Dictionary = {
+		GameManager.PreGamePower.GHOST_MODE: "👻 GHOST",
+		GameManager.PreGamePower.COIN_FRENZY: "💰 COIN FRENZY",
+		GameManager.PreGamePower.HEADSTART: "🚀 HEADSTART",
+	}
+	var pname: String = power_names.get(GameManager.selected_power, "POWER")
+	_pre_power_hud_label.text = "[%s] %.1fs" % [pname, GameManager.power_timer]
 
 func _setup_challenge_hud() -> void:
 	var ch_layer := CanvasLayer.new()
@@ -635,6 +625,66 @@ func _on_powerup_activated(type: GameManager.PowerupType) -> void:
 
 func _on_powerup_expired() -> void:
 	pass
+
+func _activate_pre_game_power_visuals() -> void:
+	if not GameManager.power_active:
+		return
+	match GameManager.selected_power:
+		GameManager.PreGamePower.GHOST_MODE:
+			_apply_ghost_mode(true)
+		GameManager.PreGamePower.HEADSTART:
+			camera.fov = HEADSTART_FOV
+
+func _apply_ghost_mode(enable: bool) -> void:
+	# Find all MeshInstance3D children of the truck and set transparency
+	for child in truck.get_children():
+		if child is MeshInstance3D:
+			var mats_count: int = child.get_surface_override_material_count()
+			if mats_count == 0:
+				mats_count = child.mesh.get_surface_count() if child.mesh else 0
+			for i in range(mats_count):
+				var mat: StandardMaterial3D = child.get_surface_override_material(i)
+				if mat == null:
+					mat = child.mesh.surface_get_material(i) as StandardMaterial3D if child.mesh else null
+				if mat == null:
+					continue
+				var new_mat: StandardMaterial3D = mat.duplicate()
+				if enable:
+					new_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+					new_mat.albedo_color.a = GHOST_MODE_ALPHA
+					new_mat.emission_enabled = true
+					new_mat.emission = Color(0.4, 0.8, 1.0)
+					new_mat.emission_energy_multiplier = 0.8
+				else:
+					new_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+					new_mat.albedo_color.a = 1.0
+				child.set_surface_override_material(i, new_mat)
+
+func _fade_ghost_mode_out() -> void:
+	# Tween alpha back to 1.0 over 1 second
+	if _ghost_tween:
+		_ghost_tween.kill()
+	_ghost_tween = create_tween()
+	for child in truck.get_children():
+		if child is MeshInstance3D:
+			var mats_count: int = child.get_surface_override_material_count()
+			if mats_count == 0:
+				mats_count = child.mesh.get_surface_count() if child.mesh else 0
+			for i in range(mats_count):
+				var mat: StandardMaterial3D = child.get_surface_override_material(i)
+				if mat == null:
+					continue
+				_ghost_tween.parallel().tween_method(
+					func(a: float): mat.albedo_color.a = a,
+					GHOST_MODE_ALPHA, 1.0, 1.0)
+	_ghost_tween.tween_callback(func(): _apply_ghost_mode(false))
+
+func _on_pre_game_power_expired() -> void:
+	match GameManager.selected_power:
+		GameManager.PreGamePower.GHOST_MODE:
+			_fade_ghost_mode_out()
+		GameManager.PreGamePower.HEADSTART:
+			# FOV returns to normal naturally via _update_fov
 
 func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
 	match env:
