@@ -4,6 +4,7 @@ extends Control
 
 @onready var play_button: Button = $VBoxContainer/PlayButton
 @onready var high_score_label: Label = $VBoxContainer/HighScoreLabel
+@onready var _vbox: VBoxContainer = $VBoxContainer
 
 # Pre-game power selection state
 var _selected_power: int = GameManager.PreGamePower.NONE
@@ -12,11 +13,37 @@ var _level_buttons: Array[Button] = []
 
 func _ready() -> void:
 	get_tree().paused = false
+	_setup_scroll_layout()
 	_refresh_stats()
 	play_button.pressed.connect(_on_play_pressed)
 	_setup_level_ui()
 	_setup_powers_ui()
 	_setup_title_anim()
+
+func _setup_scroll_layout() -> void:
+	# Wrap the existing VBoxContainer in a ScrollContainer so all content is
+	# accessible even on small screens. We do this at runtime to avoid modifying
+	# the scene file.
+	var parent := _vbox.get_parent()
+	var scroll := ScrollContainer.new()
+	# Use anchor-based layout so it adapts to any resolution
+	scroll.layout_mode = 1
+	scroll.anchor_left = 0.0
+	scroll.anchor_top = 0.0
+	scroll.anchor_right = 1.0
+	scroll.anchor_bottom = 1.0
+	scroll.offset_left = 290.0
+	scroll.offset_top = 290.0
+	scroll.offset_right = -290.0
+	scroll.offset_bottom = -50.0
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	parent.remove_child(_vbox)
+	_vbox.layout_mode = 2
+	_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_vbox.add_theme_constant_override("separation", 8)
+	scroll.add_child(_vbox)
+	parent.add_child(scroll)
 
 func _refresh_stats() -> void:
 	var hs: int = GameManager.high_score
@@ -34,26 +61,35 @@ func _setup_title_anim() -> void:
 	tween.tween_property(play_button, "modulate", Color(1.0, 1.0, 1.0), 0.7)
 
 func _setup_level_ui() -> void:
-	var vbox: VBoxContainer = $VBoxContainer
-
 	var sep := HSeparator.new()
-	vbox.add_child(sep)
+	_vbox.add_child(sep)
 
 	var lvl_title := Label.new()
 	lvl_title.text = "— SELECT LEVEL —"
 	lvl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lvl_title.add_theme_font_size_override("font_size", 20)
+	lvl_title.add_theme_font_size_override("font_size", 18)
 	lvl_title.add_theme_color_override("font_color", Color(0.6, 0.9, 1.0))
-	vbox.add_child(lvl_title)
+	_vbox.add_child(lvl_title)
 
-	var level_icons := ["🏙️", "🛣️", "🏜️", "🌉"]
+	# Use a 2-column grid via two HBoxContainers for a compact layout
+	var row1 := HBoxContainer.new()
+	row1.add_theme_constant_override("separation", 6)
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 6)
+	_vbox.add_child(row1)
+	_vbox.add_child(row2)
+
 	for i in range(GameManager.LEVEL_NAMES.size()):
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 52)
-		btn.add_theme_font_size_override("font_size", 17)
+		btn.custom_minimum_size = Vector2(0, 36)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.add_theme_font_size_override("font_size", 14)
 		var lvl_id: int = i
 		btn.pressed.connect(func(): _on_level_button_pressed(lvl_id))
-		vbox.add_child(btn)
+		if i < 2:
+			row1.add_child(btn)
+		else:
+			row2.add_child(btn)
 		_level_buttons.append(btn)
 
 	_refresh_level_buttons()
@@ -87,17 +123,15 @@ func _on_level_button_pressed(lvl_id: int) -> void:
 
 func _setup_powers_ui() -> void:
 	# Append power selection UI below existing VBoxContainer children
-	var vbox: VBoxContainer = $VBoxContainer
-
 	var sep := HSeparator.new()
-	vbox.add_child(sep)
+	_vbox.add_child(sep)
 
 	var powers_title := Label.new()
 	powers_title.text = "— SELECT PRE-GAME POWER —"
 	powers_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	powers_title.add_theme_font_size_override("font_size", 18)
+	powers_title.add_theme_font_size_override("font_size", 16)
 	powers_title.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
-	vbox.add_child(powers_title)
+	_vbox.add_child(powers_title)
 
 	var power_data := [
 		{
@@ -129,12 +163,17 @@ func _setup_powers_ui() -> void:
 	for entry in power_data:
 		var btn := Button.new()
 		btn.text = "%s\n%s" % [entry["label"], entry["desc"]]
-		btn.custom_minimum_size = Vector2(0, 56)
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.custom_minimum_size = Vector2(0, 36)
+		btn.add_theme_font_size_override("font_size", 14)
 		var pw: int = entry["power"]
 		btn.pressed.connect(func(): _select_power(pw))
-		vbox.add_child(btn)
+		_vbox.add_child(btn)
 		_power_buttons.append(btn)
+
+	# Bottom padding
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	_vbox.add_child(spacer)
 
 	# Default selection
 	_select_power(GameManager.PreGamePower.NONE)
