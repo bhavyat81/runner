@@ -684,7 +684,7 @@ func _on_pre_game_power_expired() -> void:
 		GameManager.PreGamePower.GHOST_MODE:
 			_fade_ghost_mode_out()
 		GameManager.PreGamePower.HEADSTART:
-			# FOV returns to normal naturally via _update_fov
+			pass  # FOV returns to normal naturally via _update_fov
 
 func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
 	match env:
