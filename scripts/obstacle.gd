@@ -40,8 +40,8 @@ func _build_car(color: Color) -> void:
 
 	var body_mat := StandardMaterial3D.new()
 	body_mat.albedo_color = color
-	body_mat.roughness = 0.4
-	body_mat.metallic = 0.3
+	body_mat.roughness = 0.25
+	body_mat.metallic = 0.5
 	body_mat.emission_enabled = true
 	body_mat.emission = color
 	body_mat.emission_energy_multiplier = 0.5
@@ -54,8 +54,8 @@ func _build_car(color: Color) -> void:
 	roof.mesh = roof_mesh
 	var roof_mat := StandardMaterial3D.new()
 	roof_mat.albedo_color = color.darkened(0.2)
-	roof_mat.roughness = 0.4
-	roof_mat.metallic = 0.3
+	roof_mat.roughness = 0.25
+	roof_mat.metallic = 0.5
 	roof_mat.emission_enabled = true
 	roof_mat.emission = color.darkened(0.2)
 	roof_mat.emission_energy_multiplier = 0.3
@@ -67,8 +67,8 @@ func _build_car(color: Color) -> void:
 	var win_mat := StandardMaterial3D.new()
 	win_mat.albedo_color = Color(0.2, 0.3, 0.4, 0.7)
 	win_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	win_mat.roughness = 0.1
-	win_mat.metallic = 0.5
+	win_mat.roughness = 0.05
+	win_mat.metallic = 0.7
 	for wx in [-0.91, 0.91]:
 		var win_mesh := BoxMesh.new()
 		win_mesh.size = Vector3(0.05, 0.45, 1.7)
@@ -94,6 +94,22 @@ func _build_car(color: Color) -> void:
 		w.rotation_degrees.z = 90.0
 		add_child(w)
 
+	# Front headlights (two small white emissive boxes)
+	var headlight_mat := StandardMaterial3D.new()
+	headlight_mat.albedo_color = Color(1.0, 1.0, 0.9, 1.0)
+	headlight_mat.emission_enabled = true
+	headlight_mat.emission = Color(1.0, 1.0, 0.9, 1.0)
+	headlight_mat.emission_energy_multiplier = 2.5
+	headlight_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for hx in [-0.7, 0.7]:
+		var hl_mesh := BoxMesh.new()
+		hl_mesh.size = Vector3(0.4, 0.18, 0.08)
+		var hl := MeshInstance3D.new()
+		hl.mesh = hl_mesh
+		hl.material_override = headlight_mat
+		hl.position = Vector3(hx, 0.65, -2.04)
+		add_child(hl)
+
 func _build_barrier(color: Color) -> void:
 	# Jersey barrier — tall concrete block, narrow at top, wide at base
 	var barrier_mesh := BoxMesh.new()
@@ -106,7 +122,7 @@ func _build_barrier(color: Color) -> void:
 	mat.roughness = 0.9
 	mat.emission_enabled = true
 	mat.emission = Color(0.6, 0.58, 0.55, 1.0)
-	mat.emission_energy_multiplier = 0.4
+	mat.emission_energy_multiplier = 0.6
 	mesh_instance.material_override = mat
 
 	# Reflective stripe near the top
@@ -118,7 +134,7 @@ func _build_barrier(color: Color) -> void:
 	stripe_mat.albedo_color = color
 	stripe_mat.emission_enabled = true
 	stripe_mat.emission = color
-	stripe_mat.emission_energy_multiplier = 0.8
+	stripe_mat.emission_energy_multiplier = 2.5
 	stripe.material_override = stripe_mat
 	stripe.position = Vector3(0.0, 0.95, 0.0)
 	add_child(stripe)
@@ -137,7 +153,7 @@ func _build_cone(color: Color) -> void:
 	cone_mat.roughness = 0.7
 	cone_mat.emission_enabled = true
 	cone_mat.emission = Color(1.0, 0.4, 0.0, 1.0)
-	cone_mat.emission_energy_multiplier = 0.6
+	cone_mat.emission_energy_multiplier = 0.8
 	mesh_instance.material_override = cone_mat
 
 	# White reflective band around lower portion
@@ -150,8 +166,8 @@ func _build_cone(color: Color) -> void:
 	var band_mat := StandardMaterial3D.new()
 	band_mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
 	band_mat.emission_enabled = true
-	band_mat.emission = color
-	band_mat.emission_energy_multiplier = 0.5
+	band_mat.emission = Color(1.0, 1.0, 1.0, 1.0)
+	band_mat.emission_energy_multiplier = 1.0
 	band.material_override = band_mat
 	band.position = Vector3(0.0, 0.18, 0.0)
 	add_child(band)

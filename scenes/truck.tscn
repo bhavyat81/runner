@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://truck3d"]
+[gd_scene load_steps=24 format=3 uid="uid://truck3d"]
 
 [ext_resource type="Script" path="res://scripts/truck.gd" id="1_truck"]
 
@@ -29,6 +29,17 @@ size = Vector3(0.05, 0.25, 2.4)
 [sub_resource type="BoxMesh" id="BoxMesh_taillight"]
 size = Vector3(0.28, 0.18, 0.08)
 
+[sub_resource type="BoxMesh" id="BoxMesh_underglow"]
+size = Vector3(1.6, 0.06, 5.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_underglow"]
+albedo_color = Color(0.0, 1.0, 0.8, 0.4)
+emission_enabled = true
+emission = Color(0.0, 1.0, 0.8, 1.0)
+emission_energy_multiplier = 1.5
+transparency = 1
+shading_mode = 1
+
 [sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
 top_radius = 0.38
 bottom_radius = 0.38
@@ -47,12 +58,16 @@ albedo_color = Color(0.12, 0.12, 0.12, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_compactor"]
 albedo_color = Color(0.15, 0.55, 0.15, 1)
+metallic = 0.4
+roughness = 0.3
 
 [sub_resource type="StandardMaterial3D" id="Mat_hopper"]
 albedo_color = Color(0.1, 0.35, 0.1, 1)
 
 [sub_resource type="StandardMaterial3D" id="Mat_cabin"]
 albedo_color = Color(0.9, 0.9, 0.9, 1)
+metallic = 0.4
+roughness = 0.3
 
 [sub_resource type="StandardMaterial3D" id="Mat_windshield"]
 albedo_color = Color(0.55, 0.78, 0.95, 1)
@@ -60,10 +75,10 @@ metallic = 0.4
 roughness = 0.1
 
 [sub_resource type="StandardMaterial3D" id="Mat_headlight"]
-albedo_color = Color(1.0, 0.9, 0.2, 1)
+albedo_color = Color(1.0, 1.0, 1.0, 1)
 emission_enabled = true
-emission = Color(1.0, 0.9, 0.2, 1)
-emission_energy_multiplier = 2.0
+emission = Color(1.0, 1.0, 1.0, 1)
+emission_energy_multiplier = 3.0
 
 [sub_resource type="StandardMaterial3D" id="Mat_stripe"]
 albedo_color = Color(1.0, 0.7, 0.0, 1)
@@ -72,7 +87,7 @@ albedo_color = Color(1.0, 0.7, 0.0, 1)
 albedo_color = Color(1.0, 0.0, 0.0, 1)
 emission_enabled = true
 emission = Color(1.0, 0.0, 0.0, 1)
-emission_energy_multiplier = 1.5
+emission_energy_multiplier = 2.0
 
 [sub_resource type="StandardMaterial3D" id="Mat_hubcap"]
 albedo_color = Color(0.7, 0.7, 0.7, 1)
@@ -183,6 +198,11 @@ surface_material_override/0 = SubResource("Mat_hubcap")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("BoxShape3D_truck")
+
+[node name="Underglow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, 0)
+mesh = SubResource("BoxMesh_underglow")
+surface_material_override/0 = SubResource("Mat_underglow")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 4.5, 9.0)
