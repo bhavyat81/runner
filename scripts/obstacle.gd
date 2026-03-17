@@ -19,11 +19,11 @@ func setup(lane: int, color: Color) -> void:
 	var obstacle_type := randi() % 3
 	match obstacle_type:
 		0:
-			_build_piano(color)
+			_build_car(color)
 		1:
-			_build_tv(color)
+			_build_barrier(color)
 		2:
-			_build_bed(color)
+			_build_cone(color)
 
 	# Collision shape covers all types
 	var shape := BoxShape3D.new()
@@ -31,186 +31,129 @@ func setup(lane: int, color: Color) -> void:
 	collision_shape.shape = shape
 	collision_shape.position.y = 0.9
 
-func _build_piano(color: Color) -> void:
-	# Grand piano body — large glossy black box
+func _build_car(color: Color) -> void:
+	# Car body — low wide box
 	var body_mesh := BoxMesh.new()
-	body_mesh.size = Vector3(2.4, 1.0, 2.2)
+	body_mesh.size = Vector3(2.2, 0.8, 4.0)
 	mesh_instance.mesh = body_mesh
-	mesh_instance.position.y = 0.5
+	mesh_instance.position.y = 0.6
 
 	var body_mat := StandardMaterial3D.new()
-	body_mat.albedo_color = Color(0.05, 0.05, 0.05, 1.0)
-	body_mat.metallic = 0.6
-	body_mat.roughness = 0.2
-	body_mat.emission_enabled = true
-	body_mat.emission = color * 0.3
-	body_mat.emission_energy_multiplier = 0.4
+	body_mat.albedo_color = color
+	body_mat.roughness = 0.4
+	body_mat.metallic = 0.3
 	mesh_instance.material_override = body_mat
 
-	# Lid (raised at slight angle on top)
-	var lid_mesh := BoxMesh.new()
-	lid_mesh.size = Vector3(2.4, 0.06, 2.2)
-	var lid := MeshInstance3D.new()
-	lid.mesh = lid_mesh
-	lid.material_override = body_mat
-	lid.position = Vector3(0.0, 1.05, 0.0)
-	lid.rotation_degrees.x = -12.0
-	add_child(lid)
+	# Car cabin/roof on top
+	var roof_mesh := BoxMesh.new()
+	roof_mesh.size = Vector3(1.8, 0.6, 2.0)
+	var roof := MeshInstance3D.new()
+	roof.mesh = roof_mesh
+	var roof_mat := StandardMaterial3D.new()
+	roof_mat.albedo_color = color.darkened(0.2)
+	roof_mat.roughness = 0.4
+	roof_mat.metallic = 0.3
+	roof.material_override = roof_mat
+	roof.position = Vector3(0.0, 1.1, 0.0)
+	add_child(roof)
 
-	# White piano keys strip (front of top surface)
-	var keys_white_mesh := BoxMesh.new()
-	keys_white_mesh.size = Vector3(2.2, 0.07, 0.45)
-	var keys_white := MeshInstance3D.new()
-	keys_white.mesh = keys_white_mesh
-	var keys_white_mat := StandardMaterial3D.new()
-	keys_white_mat.albedo_color = Color(0.95, 0.95, 0.92, 1.0)
-	keys_white_mat.emission_enabled = true
-	keys_white_mat.emission = Color(1.0, 1.0, 0.9, 1.0)
-	keys_white_mat.emission_energy_multiplier = 0.3
-	keys_white.material_override = keys_white_mat
-	keys_white.position = Vector3(0.0, 1.03, -0.75)
-	add_child(keys_white)
+	# Windows (dark tinted glass on sides)
+	var win_mat := StandardMaterial3D.new()
+	win_mat.albedo_color = Color(0.2, 0.3, 0.4, 0.7)
+	win_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	win_mat.roughness = 0.1
+	win_mat.metallic = 0.5
+	for wx in [-0.91, 0.91]:
+		var win_mesh := BoxMesh.new()
+		win_mesh.size = Vector3(0.05, 0.45, 1.7)
+		var win := MeshInstance3D.new()
+		win.mesh = win_mesh
+		win.material_override = win_mat
+		win.position = Vector3(wx, 1.08, 0.0)
+		add_child(win)
 
-	# Black piano keys on top of white strip (5 raised thin black bars)
-	var black_key_mat := StandardMaterial3D.new()
-	black_key_mat.albedo_color = Color(0.05, 0.05, 0.05, 1.0)
-	for i in range(5):
-		var bk_mesh := BoxMesh.new()
-		bk_mesh.size = Vector3(0.12, 0.09, 0.27)
-		var bk := MeshInstance3D.new()
-		bk.mesh = bk_mesh
-		bk.material_override = black_key_mat
-		bk.position = Vector3(-1.0 + i * 0.5, 1.07, -0.70)
-		add_child(bk)
+	# 4 wheels (dark cylinders lying on their side)
+	var wheel_mat := StandardMaterial3D.new()
+	wheel_mat.albedo_color = Color(0.1, 0.1, 0.1, 1.0)
+	wheel_mat.roughness = 0.9
+	for wpos in [Vector3(-1.2, 0.3, -1.4), Vector3(1.2, 0.3, -1.4), Vector3(-1.2, 0.3, 1.4), Vector3(1.2, 0.3, 1.4)]:
+		var w_mesh := CylinderMesh.new()
+		w_mesh.top_radius = 0.3
+		w_mesh.bottom_radius = 0.3
+		w_mesh.height = 0.22
+		var w := MeshInstance3D.new()
+		w.mesh = w_mesh
+		w.material_override = wheel_mat
+		w.position = wpos
+		w.rotation_degrees.z = 90.0
+		add_child(w)
 
-	# 3 legs (thin cylinders at front-left, front-right, back-centre)
-	var leg_mat := StandardMaterial3D.new()
-	leg_mat.albedo_color = Color(0.05, 0.05, 0.05, 1.0)
-	leg_mat.metallic = 0.5
-	for leg_pos in [Vector3(-0.9, 0.0, -0.85), Vector3(0.9, 0.0, -0.85), Vector3(0.0, 0.0, 0.85)]:
-		var leg_cyl := CylinderMesh.new()
-		leg_cyl.top_radius = 0.07
-		leg_cyl.bottom_radius = 0.07
-		leg_cyl.height = 1.0
-		var leg := MeshInstance3D.new()
-		leg.mesh = leg_cyl
-		leg.material_override = leg_mat
-		leg.position = leg_pos + Vector3(0.0, 0.5, 0.0)
-		add_child(leg)
+func _build_barrier(color: Color) -> void:
+	# Jersey barrier — tall concrete block, narrow at top, wide at base
+	var barrier_mesh := BoxMesh.new()
+	barrier_mesh.size = Vector3(0.8, 1.2, 3.0)
+	mesh_instance.mesh = barrier_mesh
+	mesh_instance.position.y = 0.6
 
-func _build_tv(color: Color) -> void:
-	# CRT television body — large boxy shape
-	var tv_mesh := BoxMesh.new()
-	tv_mesh.size = Vector3(2.6, 1.8, 1.2)
-	mesh_instance.mesh = tv_mesh
-	mesh_instance.position.y = 0.9
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.75, 0.73, 0.70, 1.0)
+	mat.roughness = 0.9
+	mesh_instance.material_override = mat
 
-	var tv_mat := StandardMaterial3D.new()
-	tv_mat.albedo_color = Color(0.18, 0.17, 0.16, 1.0)
-	tv_mat.roughness = 0.6
-	mesh_instance.material_override = tv_mat
+	# Reflective stripe near the top
+	var stripe_mesh := BoxMesh.new()
+	stripe_mesh.size = Vector3(0.82, 0.1, 3.02)
+	var stripe := MeshInstance3D.new()
+	stripe.mesh = stripe_mesh
+	var stripe_mat := StandardMaterial3D.new()
+	stripe_mat.albedo_color = color
+	stripe_mat.emission_enabled = true
+	stripe_mat.emission = color
+	stripe_mat.emission_energy_multiplier = 0.8
+	stripe.material_override = stripe_mat
+	stripe.position = Vector3(0.0, 0.95, 0.0)
+	add_child(stripe)
 
-	# Glowing screen face — tinted with the accent color
-	var screen_mesh := BoxMesh.new()
-	screen_mesh.size = Vector3(2.1, 1.4, 0.05)
-	var screen := MeshInstance3D.new()
-	screen.mesh = screen_mesh
-	var screen_mat := StandardMaterial3D.new()
-	screen_mat.albedo_color = Color(0.35, 0.55, 1.0, 1.0).lerp(color, 0.35)
-	screen_mat.emission_enabled = true
-	screen_mat.emission = Color(0.2, 0.4, 1.0, 1.0).lerp(color, 0.3)
-	screen_mat.emission_energy_multiplier = 2.0
-	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	screen.material_override = screen_mat
-	screen.position = Vector3(0.0, 0.9, -0.63)
-	add_child(screen)
+func _build_cone(color: Color) -> void:
+	# Traffic cone — orange cylinder tapering to point
+	var cone_mesh := CylinderMesh.new()
+	cone_mesh.top_radius = 0.05
+	cone_mesh.bottom_radius = 0.35
+	cone_mesh.height = 1.0
+	mesh_instance.mesh = cone_mesh
+	mesh_instance.position.y = 0.5
 
-	# Two antennas in a V shape at the top
-	var ant_mat := StandardMaterial3D.new()
-	ant_mat.albedo_color = Color(0.5, 0.5, 0.5, 1.0)
-	ant_mat.metallic = 0.7
-	var ant_angles := [Vector3(0.0, 0.0, -25.0), Vector3(0.0, 0.0, 25.0)]
-	var ant_offsets := [Vector3(-0.4, 0.0, 0.0), Vector3(0.4, 0.0, 0.0)]
-	for i in range(2):
-		var ant_cyl := CylinderMesh.new()
-		ant_cyl.top_radius = 0.03
-		ant_cyl.bottom_radius = 0.05
-		ant_cyl.height = 1.4
-		var ant := MeshInstance3D.new()
-		ant.mesh = ant_cyl
-		ant.material_override = ant_mat
-		ant.position = ant_offsets[i] + Vector3(0.0, 1.8 + 0.7, 0.3)
-		ant.rotation_degrees = ant_angles[i]
-		add_child(ant)
+	var cone_mat := StandardMaterial3D.new()
+	cone_mat.albedo_color = Color(0.95, 0.4, 0.05, 1.0)
+	cone_mat.roughness = 0.7
+	mesh_instance.material_override = cone_mat
 
-	# Stubby legs (2 small boxes at bottom)
-	var leg_mat := StandardMaterial3D.new()
-	leg_mat.albedo_color = Color(0.15, 0.14, 0.13, 1.0)
-	for lx in [-0.8, 0.8]:
-		var leg_mesh := BoxMesh.new()
-		leg_mesh.size = Vector3(0.3, 0.25, 0.4)
-		var leg := MeshInstance3D.new()
-		leg.mesh = leg_mesh
-		leg.material_override = leg_mat
-		leg.position = Vector3(lx, 0.12, 0.2)
-		add_child(leg)
+	# White reflective band around lower portion
+	var band_mesh := CylinderMesh.new()
+	band_mesh.top_radius = 0.25
+	band_mesh.bottom_radius = 0.32
+	band_mesh.height = 0.18
+	var band := MeshInstance3D.new()
+	band.mesh = band_mesh
+	var band_mat := StandardMaterial3D.new()
+	band_mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
+	band_mat.emission_enabled = true
+	band_mat.emission = color
+	band_mat.emission_energy_multiplier = 0.5
+	band.material_override = band_mat
+	band.position = Vector3(0.0, 0.18, 0.0)
+	add_child(band)
 
-func _build_bed(color: Color) -> void:
-	# Mattress — wide flat box
-	var mattress_mesh := BoxMesh.new()
-	mattress_mesh.size = Vector3(2.4, 0.45, 2.8)
-	mesh_instance.mesh = mattress_mesh
-	mesh_instance.position.y = 0.45
-
-	var mattress_mat := StandardMaterial3D.new()
-	mattress_mat.albedo_color = Color(0.82, 0.88, 0.98, 1.0).lerp(color, 0.2)
-	mattress_mat.roughness = 0.9
-	mesh_instance.material_override = mattress_mat
-
-	# Headboard — tall thin box at the back end
-	var hb_mesh := BoxMesh.new()
-	hb_mesh.size = Vector3(2.4, 1.4, 0.2)
-	var headboard := MeshInstance3D.new()
-	headboard.mesh = hb_mesh
-	var hb_mat := StandardMaterial3D.new()
-	hb_mat.albedo_color = Color(0.38, 0.22, 0.08, 1.0)
-	hb_mat.roughness = 0.7
-	headboard.material_override = hb_mat
-	headboard.position = Vector3(0.0, 0.85, 1.4)
-	add_child(headboard)
-
-	# Footboard — shorter thin box at the front end
-	var fb_mesh := BoxMesh.new()
-	fb_mesh.size = Vector3(2.4, 0.6, 0.2)
-	var footboard := MeshInstance3D.new()
-	footboard.mesh = fb_mesh
-	footboard.material_override = hb_mat
-	footboard.position = Vector3(0.0, 0.5, -1.4)
-	add_child(footboard)
-
-	# Pillow — small rounded box near headboard
-	var pillow_mesh := BoxMesh.new()
-	pillow_mesh.size = Vector3(0.9, 0.18, 0.55)
-	var pillow := MeshInstance3D.new()
-	pillow.mesh = pillow_mesh
-	var pillow_mat := StandardMaterial3D.new()
-	pillow_mat.albedo_color = Color(1.0, 0.97, 0.90, 1.0)
-	pillow_mat.roughness = 0.95
-	pillow.material_override = pillow_mat
-	pillow.position = Vector3(0.0, 0.72, 1.05)
-	add_child(pillow)
-
-	# 4 short legs at corners
-	var leg_mat := StandardMaterial3D.new()
-	leg_mat.albedo_color = Color(0.3, 0.18, 0.06, 1.0)
-	for lp in [Vector3(-1.05, 0.0, -1.25), Vector3(1.05, 0.0, -1.25), Vector3(-1.05, 0.0, 1.25), Vector3(1.05, 0.0, 1.25)]:
-		var leg_mesh := BoxMesh.new()
-		leg_mesh.size = Vector3(0.22, 0.45, 0.22)
-		var leg := MeshInstance3D.new()
-		leg.mesh = leg_mesh
-		leg.material_override = leg_mat
-		leg.position = lp + Vector3(0.0, 0.22, 0.0)
-		add_child(leg)
+	# Flat base plate
+	var base_mesh := CylinderMesh.new()
+	base_mesh.top_radius = 0.45
+	base_mesh.bottom_radius = 0.45
+	base_mesh.height = 0.08
+	var base := MeshInstance3D.new()
+	base.mesh = base_mesh
+	base.material_override = cone_mat
+	base.position = Vector3(0.0, 0.04, 0.0)
+	add_child(base)
 
 func _on_body_entered(body: Node3D) -> void:
 	if body.is_in_group("truck"):
