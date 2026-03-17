@@ -39,7 +39,7 @@ const DESPAWN_Z: float = 25.0
 const BUILDING_X_NEAR: float = 9.0
 const BUILDING_X_FAR: float = 15.0
 const BUILDINGS_PER_SEGMENT: int = 2
-const MOON_POSITION := Vector3(25.0, 45.0, -120.0)
+const MOON_POSITION := Vector3(0.0, 55.0, -150.0)
 const OBSTACLE_TIMER_MIN_RANDOMNESS: float = 0.0
 const OBSTACLE_TIMER_MAX_RANDOMNESS: float = 0.8
 const HEALTH_GOOD_THRESHOLD: int = 60
@@ -267,36 +267,61 @@ func _setup_buildings() -> void:
 func _create_moon() -> void:
 	var moon := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
-	sphere.radius = 3.0
-	sphere.height = 6.0
+	sphere.radius = 6.0
+	sphere.height = 12.0
 	moon.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.98, 0.9, 1.0)
+	mat.albedo_color = Color(0.98, 0.96, 0.88, 1.0)
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.95, 0.85, 1.0)
-	mat.emission_energy_multiplier = 2.5
+	mat.emission = Color(1.0, 0.95, 0.82, 1.0)
+	mat.emission_energy_multiplier = 2.8
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	moon.set_surface_override_material(0, mat)
 	moon.position = MOON_POSITION
 	add_child(moon)
 
+	# Soft halo glow ring around the moon
 	var halo := MeshInstance3D.new()
 	var torus := TorusMesh.new()
-	torus.inner_radius = 3.2
-	torus.outer_radius = 4.0
+	torus.inner_radius = 6.4
+	torus.outer_radius = 8.0
 	halo.mesh = torus
 
 	var halo_mat := StandardMaterial3D.new()
-	halo_mat.albedo_color = Color(1.0, 0.95, 0.8, 0.3)
+	halo_mat.albedo_color = Color(1.0, 0.95, 0.8, 0.25)
 	halo_mat.emission_enabled = true
 	halo_mat.emission = Color(1.0, 0.95, 0.8, 1.0)
-	halo_mat.emission_energy_multiplier = 1.0
+	halo_mat.emission_energy_multiplier = 0.8
 	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	halo.set_surface_override_material(0, halo_mat)
 	halo.position = MOON_POSITION
 	add_child(halo)
+
+	# Moon craters — small dark flat discs on the moon surface
+	var crater_mat := StandardMaterial3D.new()
+	crater_mat.albedo_color = Color(0.68, 0.65, 0.58, 1.0)
+	crater_mat.emission_enabled = true
+	crater_mat.emission = Color(0.5, 0.48, 0.42, 1.0)
+	crater_mat.emission_energy_multiplier = 0.4
+	crater_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+	var crater_data := [
+		# [offset_from_center, radius]
+		[Vector3(-2.2, 1.5, -5.5), 1.1],
+		[Vector3(2.8, -1.0, -5.3), 0.75],
+		[Vector3(-0.5, -3.0, -4.8), 0.55],
+	]
+	for cd in crater_data:
+		var crater := MeshInstance3D.new()
+		var c_sphere := SphereMesh.new()
+		c_sphere.radius = cd[1]
+		c_sphere.height = cd[1] * 2.0
+		crater.mesh = c_sphere
+		crater.set_surface_override_material(0, crater_mat)
+		crater.position = MOON_POSITION + cd[0]
+		add_child(crater)
 
 func _random_building_color() -> Color:
 	var palette := [
