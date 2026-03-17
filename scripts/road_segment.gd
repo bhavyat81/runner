@@ -26,14 +26,16 @@ func _ready() -> void:
 	_build_curbs()
 	_build_footpaths()
 
-# --- Road surface (dark asphalt) ---
+# --- Road surface (wet reflective asphalt) ---
 func _build_road() -> void:
 	var road := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(ROAD_HALF_WIDTH * 2.0, 0.1, SEGMENT_LENGTH)
 	road.mesh = mesh
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.12, 0.12, 0.14, 1.0)
+	mat.albedo_color = Color(0.08, 0.08, 0.12, 1.0)
+	mat.metallic = 0.15
+	mat.roughness = 0.35
 	road.material_override = mat
 	add_child(road)
 
@@ -44,7 +46,7 @@ func _build_dashed_lane_lines() -> void:
 	mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
 	mat.emission_enabled = true
 	mat.emission = Color(1.0, 1.0, 1.0, 1.0)
-	mat.emission_energy_multiplier = 0.6
+	mat.emission_energy_multiplier = 1.0
 
 	for x: float in LANE_LINE_X:
 		var period := DASH_LENGTH + DASH_GAP
@@ -60,13 +62,13 @@ func _build_dashed_lane_lines() -> void:
 			add_child(dash)
 			z += period
 
-# --- Solid white edge lines at X = ±4.5 ---
+# --- Neon blue glowing edge strips at X = ±4.5 ---
 func _build_edge_lines() -> void:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
+	mat.albedo_color = Color(0.2, 0.4, 1.0, 1.0)
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 1.0, 1.0, 1.0)
-	mat.emission_energy_multiplier = 0.6
+	mat.emission = Color(0.2, 0.4, 1.0, 1.0)
+	mat.emission_energy_multiplier = 1.5
 
 	for x: float in EDGE_LINE_X:
 		var line := MeshInstance3D.new()
@@ -81,6 +83,7 @@ func _build_edge_lines() -> void:
 func _build_curbs() -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.62, 0.60, 0.58, 1.0)
+	mat.metallic = 0.1
 
 	for s: int in CURB_X_SIGN:
 		var curb := MeshInstance3D.new()
@@ -95,7 +98,8 @@ func _build_curbs() -> void:
 # --- Raised concrete footpaths (X = ±5.0 to ±7.0) ---
 func _build_footpaths() -> void:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.78, 0.76, 0.73, 1.0)
+	mat.albedo_color = Color(0.82, 0.80, 0.77, 1.0)
+	mat.roughness = 0.85
 
 	for s: int in CURB_X_SIGN:
 		var fp := MeshInstance3D.new()
