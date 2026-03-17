@@ -53,6 +53,20 @@ one_shot = true
 wait_time = 2.0
 one_shot = true
 
+[node name="BoostTimer" type="Timer" parent="."]
+wait_time = 20.0
+one_shot = true
+
+[node name="CollectSound" type="AudioStreamPlayer" parent="."]
+
+[node name="DamageSound" type="AudioStreamPlayer" parent="."]
+
+[node name="LaneSwitchSound" type="AudioStreamPlayer" parent="."]
+
+[node name="DeathSound" type="AudioStreamPlayer" parent="."]
+
+[node name="BoostSound" type="AudioStreamPlayer" parent="."]
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="ScoreLabel" type="Label" parent="HUD"]
@@ -101,3 +115,13 @@ min_value = 0.0
 max_value = 100.0
 value = 100.0
 show_percentage = false
+
+[node name="ComboLabel" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 150.0
+offset_right = 400.0
+offset_bottom = 190.0
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(1, 0.85, 0.1, 1)
+text = ""
+visible = false

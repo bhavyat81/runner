@@ -37,8 +37,8 @@ func _ready() -> void:
 func _build_meshes() -> void:
 	# Bright red glowing disc on road surface - LARGER and more visible
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 1.1
-	cyl.bottom_radius = 1.1
+	cyl.top_radius = 1.6
+	cyl.bottom_radius = 1.6
 	cyl.height = 0.08
 	marker_mesh.mesh = cyl
 
@@ -46,14 +46,14 @@ func _build_meshes() -> void:
 	red_mat.albedo_color = Color(1.0, 0.1, 0.1, 0.9)
 	red_mat.emission_enabled = true
 	red_mat.emission = Color(1.0, 0.0, 0.0, 1.0)
-	red_mat.emission_energy_multiplier = 1.5
+	red_mat.emission_energy_multiplier = 3.0
 	red_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	marker_mesh.material_override = red_mat
 
 	# Garbage bag — hidden until the marker gets close to the truck
 	var sphere := SphereMesh.new()
-	sphere.radius = 0.45
-	sphere.height = 0.9
+	sphere.radius = 0.7
+	sphere.height = 1.4
 	garbage_bag.mesh = sphere
 	garbage_bag.position.y = BAG_START_Y
 	garbage_bag.visible = false
@@ -61,21 +61,21 @@ func _build_meshes() -> void:
 	var bag_mat := StandardMaterial3D.new()
 	bag_mat.albedo_color = Color(0.1, 0.6, 0.1, 1.0)
 	bag_mat.emission_enabled = true
-	bag_mat.emission = Color(0.0, 0.4, 0.0, 1.0)
-	bag_mat.emission_energy_multiplier = 0.3
+	bag_mat.emission = Color(0.0, 0.5, 0.0, 1.0)
+	bag_mat.emission_energy_multiplier = 0.8
 	garbage_bag.material_override = bag_mat
 
 	# Collision zone
 	var cyl_shape := CylinderShape3D.new()
-	cyl_shape.radius = 1.0
+	cyl_shape.radius = 1.4
 	cyl_shape.height = 0.8
 	collision_shape.shape = cyl_shape
 	collision_shape.position.y = 0.4
 
 func _build_tick_mark() -> void:
 	tick_label = Label3D.new()
-	tick_label.font_size = 96
-	tick_label.position = Vector3(0.0, 1.8, 0.0)
+	tick_label.font_size = 128
+	tick_label.position = Vector3(0.0, 2.4, 0.0)
 	tick_label.visible = false
 	tick_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	tick_label.no_depth_test = true
@@ -126,6 +126,14 @@ func _process(delta: float) -> void:
 func _on_body_entered(body: Node3D) -> void:
 	if body.is_in_group("truck") and not collected:
 		collected = true
+		# Spawn visual effect
+		var effect_scene := load("res://scenes/collect_effect.tscn")
+		if effect_scene:
+			var effect: Node3D = effect_scene.instantiate()
+			effect.position = global_position
+			get_parent().add_child(effect)
+			var effect_color := Color(0.1, 1.0, 0.2, 1.0) if not is_harmful else Color(1.0, 0.15, 0.15, 1.0)
+			effect.setup(effect_color)
 		if is_harmful:
 			GameManager.damage_health(20)
 		else:
