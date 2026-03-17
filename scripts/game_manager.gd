@@ -5,7 +5,7 @@ extends Node
 
 enum GameState { MENU, PLAYING, PAUSED, GAME_OVER }
 enum PowerupType { NONE, SHIELD, MAGNET, SLOW_MO, DOUBLE_POINTS }
-enum Environment { CITY, HIGHWAY, BRIDGE, TUNNEL }
+enum GameEnvironment { CITY, HIGHWAY, BRIDGE, TUNNEL }
 
 signal score_changed(new_score: int)
 signal game_state_changed(new_state: GameState)
@@ -19,7 +19,7 @@ signal level_up(new_level: int)
 signal daily_challenge_completed(index: int)
 signal boss_spawned
 signal boss_defeated
-signal environment_changed(env: Environment)
+signal environment_changed(env: GameEnvironment)
 
 var current_state: GameState = GameState.MENU
 var score: int = 0
@@ -67,7 +67,7 @@ var boss_active: bool = false
 const BOSS_INTERVAL: float = 500.0
 
 # Day/Night cycle: environment
-var current_environment: Environment = Environment.CITY
+var current_environment: GameEnvironment = GameEnvironment.CITY
 
 # Coins and skins
 var coins: int = 0
@@ -127,7 +127,7 @@ func start_game() -> void:
 	powerup_timer = 0.0
 	boss_active = false
 	last_boss_distance = -BOSS_INTERVAL
-	current_environment = Environment.CITY
+	current_environment = GameEnvironment.CITY
 	# Reset run trackers
 	_run_bags = 0
 	_run_dist_no_boost = 0.0
@@ -270,19 +270,19 @@ func update_game(delta: float) -> void:
 		boss_spawned.emit()
 
 	# Update environment
-	var new_env: Environment = _get_environment_for_distance(distance)
+	var new_env: GameEnvironment = _get_environment_for_distance(distance)
 	if new_env != current_environment:
 		current_environment = new_env
 		environment_changed.emit(current_environment)
 
-func _get_environment_for_distance(d: float) -> Environment:
+func _get_environment_for_distance(d: float) -> GameEnvironment:
 	var cycle_pos: int = int(d / 400.0) % 4
 	match cycle_pos:
-		0: return Environment.CITY
-		1: return Environment.HIGHWAY
-		2: return Environment.BRIDGE
-		3: return Environment.TUNNEL
-	return Environment.CITY
+		0: return GameEnvironment.CITY
+		1: return GameEnvironment.HIGHWAY
+		2: return GameEnvironment.BRIDGE
+		3: return GameEnvironment.TUNNEL
+	return GameEnvironment.CITY
 
 # --- XP / Level ---
 func _check_level_up() -> void:

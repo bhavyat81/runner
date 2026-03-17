@@ -561,7 +561,7 @@ func _on_boss_spawned() -> void:
 	_show_boss_message("BOSS INCOMING!")
 	_spawn_boss()
 
-func _on_environment_changed(env: GameManager.Environment) -> void:
+func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
 	for seg in road_segments:
 		if seg.has_method("apply_environment"):
 			seg.apply_environment(env)

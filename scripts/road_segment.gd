@@ -27,20 +27,20 @@ func _ready() -> void:
 	_build_street_lights()
 
 # Called by game.gd when the environment changes
-func apply_environment(env: GameManager.Environment) -> void:
+func apply_environment(env: GameManager.GameEnvironment) -> void:
 	# Tint road surface mesh (first child is road surface)
 	var road_node: MeshInstance3D = _find_first_mesh_child()
 	if road_node:
 		var mat: StandardMaterial3D = road_node.material_override
 		if mat:
 			match env:
-				GameManager.Environment.CITY:
+				GameManager.GameEnvironment.CITY:
 					mat.albedo_color = Color(0.12, 0.12, 0.14)
-				GameManager.Environment.HIGHWAY:
+				GameManager.GameEnvironment.HIGHWAY:
 					mat.albedo_color = Color(0.18, 0.17, 0.15)
-				GameManager.Environment.BRIDGE:
+				GameManager.GameEnvironment.BRIDGE:
 					mat.albedo_color = Color(0.20, 0.19, 0.18)
-				GameManager.Environment.TUNNEL:
+				GameManager.GameEnvironment.TUNNEL:
 					mat.albedo_color = Color(0.08, 0.08, 0.10)
 
 func _find_first_mesh_child() -> MeshInstance3D:
