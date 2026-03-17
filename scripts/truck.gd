@@ -15,6 +15,9 @@ const GRAVITY: float = 28.0
 const TILT_Z_AMOUNT: float = 8.0   # lean on lane switch
 const TILT_X_JUMP: float = -5.0    # forward tilt on ascent
 const TILT_X_FALL: float = 5.0     # backward tilt on descent
+const TILT_SPEED: float = 8.0
+const TILT_RETURN_SPEED: float = 6.0
+const TILT_SNAP_THRESHOLD: float = 0.005
 
 var target_x: float = 0.0
 var is_dead: bool = false
@@ -22,6 +25,7 @@ var invincible: bool = false
 var _tween_active: bool = false
 var _jump_cooldown: float = 0.0
 var _squash_timer: float = 0.0
+var tilt_target: float = 0.0
 
 # Touch swipe detection
 var touch_start: Vector2 = Vector2.ZERO
@@ -35,6 +39,7 @@ func _ready() -> void:
 	current_lane = 1
 	target_x = LANES[current_lane]
 	position = Vector3(0.0, 0.0, 0.0)
+	rotation = Vector3.ZERO
 	add_to_group("truck")
 	_setup_truck_appearance()
 	_apply_skin(GameManager.selected_skin)
@@ -165,11 +170,19 @@ func _physics_process(delta: float) -> void:
 		position.x = lerp(position.x, target_x, 10.0 * delta)
 
 	# Z tilt (lane change lean)
-	var tilt_z_target: float = 0.0
-	if _tween_active:
-		var dx: float = target_x - position.x
-		tilt_z_target = -sign(dx) * deg_to_rad(TILT_Z_AMOUNT)
-	rotation.z = lerp(rotation.z, tilt_z_target, 0.15 / delta if delta > 0 else 1.0)
+	# --- FIX: Tilt logic that properly returns to zero ---
+	# First, decay tilt_target toward zero
+	tilt_target = lerp(tilt_target, 0.0, TILT_RETURN_SPEED * delta)
+	if absf(tilt_target) < TILT_SNAP_THRESHOLD:
+		tilt_target = 0.0
+
+	# Then move rotation.z toward the (now-decaying) tilt_target
+	rotation.z = lerp(rotation.z, tilt_target, TILT_SPEED * delta)
+	if absf(rotation.z) < TILT_SNAP_THRESHOLD:
+		rotation.z = 0.0
+
+	# Clamp rotation.z to prevent runaway spinning
+	rotation.z = clampf(rotation.z, -deg_to_rad(TILT_Z_AMOUNT) * 2.0, deg_to_rad(TILT_Z_AMOUNT) * 2.0)
 
 	# X tilt (jump lean)
 	var tilt_x_target: float = 0.0
@@ -211,6 +224,7 @@ func _change_lane(direction: int) -> void:
 		return
 	current_lane = new_lane
 	target_x = LANES[current_lane]
+	tilt_target = float(-direction) * deg_to_rad(TILT_Z_AMOUNT)
 	_tween_active = true
 	var tween := create_tween()
 	tween.set_ease(Tween.EASE_OUT)
@@ -230,5 +244,6 @@ func die() -> void:
 	if is_dead or invincible:
 		return
 	is_dead = true
+	rotation.z = 0.0
 	died.emit()
 
