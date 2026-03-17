@@ -5,7 +5,7 @@ extends Node
 
 enum GameState { MENU, PLAYING, PAUSED, GAME_OVER }
 enum PowerupType { NONE, SHIELD, MAGNET, SLOW_MO, DOUBLE_POINTS }
-enum GameEnvironment { CITY, HIGHWAY, BRIDGE, TUNNEL }
+enum GameEnvironment { CITY, HIGHWAY, DESERT, BRIDGE }
 enum PreGamePower { NONE, GHOST_MODE, COIN_FRENZY, HEADSTART }
 
 signal score_changed(new_score: int)
@@ -81,6 +81,12 @@ var unlocked_skins: Array[bool] = [true, false, false, false, false]
 const SKIN_COSTS: Array[int] = [0, 50, 100, 200, 300]
 const SKIN_NAMES: Array[String] = ["Default", "Fire Truck", "Ice Cream Truck", "Monster Truck", "Neon Truck"]
 
+# Level selection system
+var selected_level: int = 0
+var unlocked_levels: Array[bool] = [true, false, false, false]
+const LEVEL_COSTS: Array[int] = [0, 50, 150, 300]
+const LEVEL_NAMES: Array[String] = ["City", "Highway", "Desert", "Bridge"]
+
 # XP and Level
 var xp: int = 0
 var level: int = 1
@@ -128,6 +134,8 @@ func start_game() -> void:
 	active_powerup = PowerupType.NONE
 	powerup_timer = 0.0
 	current_environment = GameEnvironment.CITY
+	# Set environment based on selected level
+	current_environment = selected_level as GameEnvironment
 	# Reset run trackers
 	_run_bags = 0
 	_run_dist_no_boost = 0.0
@@ -286,20 +294,26 @@ func update_game(delta: float) -> void:
 			power_timer = 0.0
 			pre_game_power_expired.emit()
 
-	# Update environment
-	var new_env: GameEnvironment = _get_environment_for_distance(distance)
-	if new_env != current_environment:
-		current_environment = new_env
-		environment_changed.emit(current_environment)
+# --- Level unlock system ---
+func unlock_level(level_id: int) -> bool:
+	if level_id < 0 or level_id >= LEVEL_COSTS.size():
+		return false
+	if unlocked_levels[level_id]:
+		return false
+	if coins < LEVEL_COSTS[level_id]:
+		return false
+	coins -= LEVEL_COSTS[level_id]
+	unlocked_levels[level_id] = true
+	_save_save_data()
+	return true
 
-func _get_environment_for_distance(d: float) -> GameEnvironment:
-	var cycle_pos: int = int(d / 400.0) % 4
-	match cycle_pos:
-		0: return GameEnvironment.CITY
-		1: return GameEnvironment.HIGHWAY
-		2: return GameEnvironment.BRIDGE
-		3: return GameEnvironment.TUNNEL
-	return GameEnvironment.CITY
+func select_level(level_id: int) -> void:
+	if level_id >= 0 and level_id < LEVEL_COSTS.size() and unlocked_levels[level_id]:
+		selected_level = level_id
+
+func collect_road_coin() -> void:
+	var coin_gain: int = 3 if (power_active and selected_power == PreGamePower.COIN_FRENZY) else 1
+	coins += coin_gain
 
 # --- XP / Level ---
 func _check_level_up() -> void:
@@ -403,6 +417,8 @@ func _save_save_data() -> void:
 		"daily_challenge_day": _daily_challenge_day,
 		"daily_challenge_progress": daily_challenge_progress,
 		"bags_today": _bags_today,
+		"selected_level": selected_level,
+		"unlocked_levels": unlocked_levels,
 	}
 	var file := FileAccess.open("user://save_data.json", FileAccess.WRITE)
 	if file:
@@ -435,6 +451,10 @@ func _load_save_data() -> void:
 	for i in range(minf(prog.size(), daily_challenge_progress.size())):
 		daily_challenge_progress[i] = int(prog[i])
 	_bags_today = int(d.get("bags_today", 0))
+	selected_level = int(d.get("selected_level", 0))
+	var ul = d.get("unlocked_levels", [true, false, false, false])
+	for i in range(minf(ul.size(), unlocked_levels.size())):
+		unlocked_levels[i] = bool(ul[i])
 
 func _save_leaderboard() -> void:
 	var file := FileAccess.open("user://leaderboard.json", FileAccess.WRITE)

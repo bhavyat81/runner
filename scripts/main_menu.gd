@@ -8,11 +8,13 @@ extends Control
 # Pre-game power selection state
 var _selected_power: int = GameManager.PreGamePower.NONE
 var _power_buttons: Array[Button] = []
+var _level_buttons: Array[Button] = []
 
 func _ready() -> void:
 	get_tree().paused = false
 	_refresh_stats()
 	play_button.pressed.connect(_on_play_pressed)
+	_setup_level_ui()
 	_setup_powers_ui()
 	_setup_title_anim()
 
@@ -22,7 +24,7 @@ func _refresh_stats() -> void:
 	var lvl: int = GameManager.level
 	high_score_label.text = (
 		("Best: ---" if hs == 0 else "Best: %d" % hs) +
-		"   |   Coins: %d   |   Lv.%d" % [coins, lvl]
+		"   |   🪙 %d   |   Lv.%d" % [coins, lvl]
 	)
 
 func _setup_title_anim() -> void:
@@ -30,6 +32,58 @@ func _setup_title_anim() -> void:
 	var tween := create_tween().set_loops()
 	tween.tween_property(play_button, "modulate", Color(1.2, 1.2, 0.8), 0.7)
 	tween.tween_property(play_button, "modulate", Color(1.0, 1.0, 1.0), 0.7)
+
+func _setup_level_ui() -> void:
+	var vbox: VBoxContainer = $VBoxContainer
+
+	var sep := HSeparator.new()
+	vbox.add_child(sep)
+
+	var lvl_title := Label.new()
+	lvl_title.text = "— SELECT LEVEL —"
+	lvl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lvl_title.add_theme_font_size_override("font_size", 20)
+	lvl_title.add_theme_color_override("font_color", Color(0.6, 0.9, 1.0))
+	vbox.add_child(lvl_title)
+
+	var level_icons := ["🏙️", "🛣️", "🏜️", "🌉"]
+	for i in range(GameManager.LEVEL_NAMES.size()):
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(0, 52)
+		btn.add_theme_font_size_override("font_size", 17)
+		var lvl_id: int = i
+		btn.pressed.connect(func(): _on_level_button_pressed(lvl_id))
+		vbox.add_child(btn)
+		_level_buttons.append(btn)
+
+	_refresh_level_buttons()
+
+func _refresh_level_buttons() -> void:
+	var level_icons := ["🏙️", "🛣️", "🏜️", "🌉"]
+	for i in range(_level_buttons.size()):
+		var btn: Button = _level_buttons[i]
+		var name_str: String = "%s %s" % [level_icons[i], GameManager.LEVEL_NAMES[i]]
+		if GameManager.unlocked_levels[i]:
+			btn.text = name_str
+			btn.modulate = Color(1.3, 1.3, 1.0) if GameManager.selected_level == i else Color(1.0, 1.0, 1.0)
+			btn.add_theme_color_override("font_color",
+				Color(1.0, 1.0, 0.3) if GameManager.selected_level == i else Color(1.0, 1.0, 1.0))
+		else:
+			var cost: int = GameManager.LEVEL_COSTS[i]
+			btn.text = "%s  🔒 %d 🪙" % [name_str, cost]
+			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+
+func _on_level_button_pressed(lvl_id: int) -> void:
+	if GameManager.unlocked_levels[lvl_id]:
+		GameManager.select_level(lvl_id)
+		_refresh_level_buttons()
+	else:
+		# Try to unlock
+		if GameManager.unlock_level(lvl_id):
+			GameManager.select_level(lvl_id)
+			_refresh_stats()
+			_refresh_level_buttons()
 
 func _setup_powers_ui() -> void:
 	# Append power selection UI below existing VBoxContainer children

@@ -55,6 +55,7 @@ func _build_meshes() -> void:
 	# Falling item — hidden until the marker gets close to the truck.
 	# Actual mesh is built in _build_item_mesh() after is_harmful is known.
 	garbage_bag.position.y = BAG_START_Y
+	garbage_bag.rotation_degrees.y = 180.0
 	garbage_bag.visible = false
 
 	# Collision zone
