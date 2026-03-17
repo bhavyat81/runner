@@ -78,7 +78,7 @@ func _add_billboard(height: float, width: float, depth: float) -> void:
 	_billboard_mat.emission_energy_multiplier = 2.5
 	_billboard_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sign_node.material_override = _billboard_mat
-	sign_node.position = Vector3(0.0, b_y, depth * 0.5 + 0.1)
+	sign_node.position = Vector3(0.0, b_y, depth * 0.5 + 0.16)
 	add_child(sign_node)
 
 func _add_windows(height: float, width: float, depth: float) -> void:

@@ -12,7 +12,6 @@ const ACHIEVEMENTS: Dictionary = {
 	"speed_demon":  {"title": "Speed Demon",   "desc": "Reach maximum speed",             "unlocked": false},
 	"guru":         {"title": "Garbage Guru",  "desc": "Collect 1000 total bags",         "unlocked": false},
 	"survivor":     {"title": "Survivor",      "desc": "Complete 5 runs",                 "unlocked": false},
-	"boss_slayer":  {"title": "Boss Slayer",   "desc": "Defeat 3 boss tornadoes",         "unlocked": false},
 	"untouchable":  {"title": "Untouchable",   "desc": "Complete a run with full health", "unlocked": false},
 }
 
@@ -30,7 +29,6 @@ func _connect_signals() -> void:
 	GameManager.health_changed.connect(_on_health_changed)
 	GameManager.combo_changed.connect(_on_combo_changed)
 	GameManager.garbage_collected_signal.connect(_on_garbage_collected)
-	GameManager.boss_defeated.connect(_on_boss_defeated)
 
 func _process(_delta: float) -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -74,10 +72,6 @@ func _on_garbage_collected() -> void:
 		unlock("first_haul")
 	if not ACHIEVEMENTS["guru"]["unlocked"] and total >= 1000:
 		unlock("guru")
-
-func _on_boss_defeated() -> void:
-	if not ACHIEVEMENTS["boss_slayer"]["unlocked"] and GameManager.boss_encounters >= 3:
-		unlock("boss_slayer")
 
 func unlock(id: String) -> void:
 	if not ACHIEVEMENTS.has(id):

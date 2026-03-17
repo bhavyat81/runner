@@ -1,6 +1,6 @@
 # game_manager.gd
 # Global autoload singleton. Manages game state, score, garbage count, speed, health,
-# power-ups, XP/levels, coins, daily challenges, boss tracking, and leaderboard.
+# power-ups, XP/levels, coins, daily challenges, and leaderboard.
 extends Node
 
 enum GameState { MENU, PLAYING, PAUSED, GAME_OVER }
@@ -17,8 +17,6 @@ signal powerup_activated(type: PowerupType)
 signal powerup_expired
 signal level_up(new_level: int)
 signal daily_challenge_completed(index: int)
-signal boss_spawned
-signal boss_defeated
 signal environment_changed(env: GameEnvironment)
 
 var current_state: GameState = GameState.MENU
@@ -60,12 +58,6 @@ const POWERUP_DURATIONS: Dictionary = {
 	PowerupType.DOUBLE_POINTS: 10.0,
 }
 
-# Boss encounters
-var last_boss_distance: float = -999.0
-var boss_encounters: int = 0
-var boss_active: bool = false
-const BOSS_INTERVAL: float = 500.0
-
 # Day/Night cycle: environment
 var current_environment: GameEnvironment = GameEnvironment.CITY
 
@@ -91,7 +83,6 @@ const CHALLENGE_POOL: Array[Dictionary] = [
 	{"desc": "Collect 50 bags in one run", "type": "bags_run", "target": 50, "reward": 25},
 	{"desc": "Reach 1000m without boost", "type": "dist_no_boost", "target": 1000, "reward": 25},
 	{"desc": "Get 15x combo", "type": "combo", "target": 15, "reward": 25},
-	{"desc": "Survive 3 boss encounters", "type": "boss", "target": 3, "reward": 25},
 	{"desc": "Collect 200 bags total today", "type": "bags_day", "target": 200, "reward": 25},
 	{"desc": "Reach 2000m", "type": "distance", "target": 2000, "reward": 25},
 ]
@@ -125,8 +116,6 @@ func start_game() -> void:
 	difficulty_wave = 0
 	active_powerup = PowerupType.NONE
 	powerup_timer = 0.0
-	boss_active = false
-	last_boss_distance = -BOSS_INTERVAL
 	current_environment = GameEnvironment.CITY
 	# Reset run trackers
 	_run_bags = 0
@@ -264,11 +253,6 @@ func update_game(delta: float) -> void:
 	if not _boost_used_this_run:
 		_run_dist_no_boost = distance
 
-	# Check boss spawn
-	if not boss_active and (distance - last_boss_distance) >= BOSS_INTERVAL:
-		last_boss_distance = distance
-		boss_spawned.emit()
-
 	# Update environment
 	var new_env: GameEnvironment = _get_environment_for_distance(distance)
 	if new_env != current_environment:
@@ -349,7 +333,6 @@ func _update_daily_challenge_progress(type: String, value: int) -> void:
 func _check_daily_challenges_end_of_run() -> void:
 	_update_daily_challenge_progress("bags_run", _run_bags)
 	_update_daily_challenge_progress("dist_no_boost", int(_run_dist_no_boost))
-	_update_daily_challenge_progress("boss", boss_encounters)
 	_update_daily_challenge_progress("distance", int(distance))
 
 # --- Leaderboard ---
@@ -387,7 +370,6 @@ func _save_save_data() -> void:
 		"daily_challenge_day": _daily_challenge_day,
 		"daily_challenge_progress": daily_challenge_progress,
 		"bags_today": _bags_today,
-		"boss_encounters": boss_encounters,
 	}
 	var file := FileAccess.open("user://save_data.json", FileAccess.WRITE)
 	if file:
@@ -420,7 +402,6 @@ func _load_save_data() -> void:
 	for i in range(minf(prog.size(), daily_challenge_progress.size())):
 		daily_challenge_progress[i] = int(prog[i])
 	_bags_today = int(d.get("bags_today", 0))
-	boss_encounters = int(d.get("boss_encounters", 0))
 
 func _save_leaderboard() -> void:
 	var file := FileAccess.open("user://leaderboard.json", FileAccess.WRITE)
