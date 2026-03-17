@@ -5,13 +5,12 @@
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
-background_color = Color(0.03, 0.03, 0.08, 1)
+background_color = Color(0.05, 0.05, 0.15, 1)
 ambient_light_source = 1
 ambient_light_color = Color(0.3, 0.35, 0.5, 1)
-ambient_light_energy = 0.55
+ambient_light_energy = 0.4
 fog_enabled = true
-fog_density = 0.012
-fog_light_color = Color(0.03, 0.03, 0.08, 1)
+fog_density = 0.008
 fog_sky_affect = 0.5
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
@@ -25,8 +24,8 @@ environment = SubResource("Environment_sky")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.766, -0.643, 0, 0.643, 0.766, 0, 20, 10)
-light_color = Color(0.8, 0.82, 0.95, 1)
-light_energy = 0.75
+light_color = Color(0.7, 0.75, 0.9, 1)
+light_energy = 0.6
 shadow_enabled = true
 
 [node name="Ground" type="StaticBody3D" parent="."]

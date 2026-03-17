@@ -13,23 +13,20 @@ func setup(height: float, width: float, depth: float, color: Color) -> void:
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.metallic = 0.05
-	mat.roughness = 0.7
 	mesh_instance.material_override = mat
 
 	# Add details
 	_add_windows(height, width, depth)
 	_add_ledges(height, width, depth, color)
 	_add_roof(height, width, depth)
-	_add_neon_accent(height, width, depth)
 
 func _add_windows(height: float, width: float, depth: float) -> void:
 	# Create two window materials — lit and dark
 	var lit_mat := StandardMaterial3D.new()
-	lit_mat.albedo_color = Color(1.0, 0.85, 0.5, 1.0)
+	lit_mat.albedo_color = Color(1.0, 0.95, 0.7, 1.0)
 	lit_mat.emission_enabled = true
-	lit_mat.emission = Color(1.0, 0.85, 0.5, 1.0)
-	lit_mat.emission_energy_multiplier = 1.2
+	lit_mat.emission = Color(1.0, 0.9, 0.6, 1.0)
+	lit_mat.emission_energy_multiplier = 0.5
 
 	var dark_mat := StandardMaterial3D.new()
 	dark_mat.albedo_color = Color(0.15, 0.2, 0.3, 1.0)
@@ -127,43 +124,3 @@ func _add_roof(height: float, width: float, depth: float) -> void:
 		structure.material_override = structure_mat
 		structure.position = Vector3(randf_range(-1.0, 1.0), height + 0.8, 0.0)
 		add_child(structure)
-
-		# Rooftop aviation light on tall buildings
-	if height > 12.0:
-		var light_mat := StandardMaterial3D.new()
-		light_mat.albedo_color = Color(1.0, 0.0, 0.0, 1.0)
-		light_mat.emission_enabled = true
-		light_mat.emission = Color(1.0, 0.0, 0.0, 1.0)
-		light_mat.emission_energy_multiplier = 2.0
-		light_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		var light_sphere := SphereMesh.new()
-		light_sphere.radius = 0.18
-		light_sphere.height = 0.36
-		var avi_light := MeshInstance3D.new()
-		avi_light.mesh = light_sphere
-		avi_light.material_override = light_mat
-		avi_light.position = Vector3(0.0, height + 0.5, 0.0)
-		add_child(avi_light)
-
-func _add_neon_accent(height: float, width: float, depth: float) -> void:
-	# Thin glowing neon strip at the base of the building
-	var neon_colors: Array = [
-		Color(0.0, 1.0, 1.0, 1.0),
-		Color(1.0, 0.0, 1.0, 1.0),
-		Color(1.0, 0.95, 0.7, 1.0),
-	]
-	var chosen_color: Color = neon_colors[randi() % neon_colors.size()]
-	var neon_mat := StandardMaterial3D.new()
-	neon_mat.albedo_color = chosen_color
-	neon_mat.emission_enabled = true
-	neon_mat.emission = chosen_color
-	neon_mat.emission_energy_multiplier = 1.5
-	neon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-
-	var strip_mesh := BoxMesh.new()
-	strip_mesh.size = Vector3(width + 0.32, 0.08, depth + 0.32)
-	var strip := MeshInstance3D.new()
-	strip.mesh = strip_mesh
-	strip.material_override = neon_mat
-	strip.position = Vector3(0.0, 0.22, 0.0)
-	add_child(strip)

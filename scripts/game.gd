@@ -267,8 +267,8 @@ func _setup_buildings() -> void:
 func _create_moon() -> void:
 	var moon := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
-	sphere.radius = 8.0
-	sphere.height = 16.0
+	sphere.radius = 6.0
+	sphere.height = 12.0
 	moon.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
@@ -281,18 +281,18 @@ func _create_moon() -> void:
 	moon.position = MOON_POSITION
 	add_child(moon)
 
-	# Soft halo glow ring around the moon — larger and brighter
+	# Soft halo glow ring around the moon
 	var halo := MeshInstance3D.new()
 	var torus := TorusMesh.new()
-	torus.inner_radius = 8.6
-	torus.outer_radius = 11.0
+	torus.inner_radius = 6.4
+	torus.outer_radius = 8.0
 	halo.mesh = torus
 
 	var halo_mat := StandardMaterial3D.new()
-	halo_mat.albedo_color = Color(1.0, 0.95, 0.8, 0.35)
+	halo_mat.albedo_color = Color(1.0, 0.95, 0.8, 0.25)
 	halo_mat.emission_enabled = true
 	halo_mat.emission = Color(1.0, 0.95, 0.8, 1.0)
-	halo_mat.emission_energy_multiplier = 1.2
+	halo_mat.emission_energy_multiplier = 0.8
 	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	halo.set_surface_override_material(0, halo_mat)
@@ -309,12 +309,9 @@ func _create_moon() -> void:
 
 	var crater_data := [
 		# [offset_from_center, radius]
-		[Vector3(-2.9, 2.0, -7.3), 1.4],
-		[Vector3(3.7, -1.3, -7.1), 1.0],
-		[Vector3(-0.7, -4.0, -6.4), 0.75],
-		[Vector3(1.8, 3.5, -6.8), 0.6],
-		[Vector3(-4.5, -0.5, -6.6), 0.85],
-		[Vector3(2.5, -3.2, -7.0), 0.5],
+		[Vector3(-2.2, 1.5, -5.5), 1.1],
+		[Vector3(2.8, -1.0, -5.3), 0.75],
+		[Vector3(-0.5, -3.0, -4.8), 0.55],
 	]
 	for cd in crater_data:
 		var crater := MeshInstance3D.new()
@@ -325,41 +322,6 @@ func _create_moon() -> void:
 		crater.set_surface_override_material(0, crater_mat)
 		crater.position = MOON_POSITION + cd[0]
 		add_child(crater)
-
-	# Stars — small white spheres scattered in the sky
-	var star_mat := StandardMaterial3D.new()
-	star_mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
-	star_mat.emission_enabled = true
-	star_mat.emission = Color(1.0, 1.0, 1.0, 1.0)
-	star_mat.emission_energy_multiplier = 2.0
-	star_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 42  # Fixed seed for consistent star placement
-	for i in range(40):
-		var star := MeshInstance3D.new()
-		var star_sphere := SphereMesh.new()
-		var star_size := rng.randf_range(0.1, 0.35)
-		star_sphere.radius = star_size
-		star_sphere.height = star_size * 2.0
-		star.mesh = star_sphere
-		# Some stars have slight emission variation for twinkling effect
-		if rng.randf() < 0.4:
-			var twinkle_mat := StandardMaterial3D.new()
-			twinkle_mat.albedo_color = Color(0.9, 0.95, 1.0, 1.0)
-			twinkle_mat.emission_enabled = true
-			twinkle_mat.emission = Color(0.9, 0.95, 1.0, 1.0)
-			twinkle_mat.emission_energy_multiplier = 3.5
-			twinkle_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			star.set_surface_override_material(0, twinkle_mat)
-		else:
-			star.set_surface_override_material(0, star_mat)
-		star.position = Vector3(
-			rng.randf_range(-120.0, 120.0),
-			rng.randf_range(25.0, 70.0),
-			rng.randf_range(-250.0, -80.0)
-		)
-		add_child(star)
 
 func _random_building_color() -> Color:
 	var palette := [

@@ -52,39 +52,6 @@ func _build_meshes() -> void:
 	red_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	marker_mesh.material_override = red_mat
 
-	# Radar-ping outer ring — larger transparent cylinder that pulses outward
-	var ring_cyl := CylinderMesh.new()
-	ring_cyl.top_radius = 2.2
-	ring_cyl.bottom_radius = 2.2
-	ring_cyl.height = 0.04
-	var outer_ring := MeshInstance3D.new()
-	outer_ring.mesh = ring_cyl
-	var ring_mat := StandardMaterial3D.new()
-	ring_mat.albedo_color = Color(1.0, 0.2, 0.2, 0.3)
-	ring_mat.emission_enabled = true
-	ring_mat.emission = Color(1.0, 0.1, 0.1, 1.0)
-	ring_mat.emission_energy_multiplier = 1.5
-	ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	outer_ring.material_override = ring_mat
-	outer_ring.position = Vector3(0.0, -0.02, 0.0)
-	add_child(outer_ring)
-
-	# Dark fake shadow disc below the marker
-	var shadow_cyl := CylinderMesh.new()
-	shadow_cyl.top_radius = 1.8
-	shadow_cyl.bottom_radius = 1.8
-	shadow_cyl.height = 0.02
-	var shadow := MeshInstance3D.new()
-	shadow.mesh = shadow_cyl
-	var shadow_mat := StandardMaterial3D.new()
-	shadow_mat.albedo_color = Color(0.0, 0.0, 0.0, 0.5)
-	shadow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	shadow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	shadow.material_override = shadow_mat
-	shadow.position = Vector3(0.0, -0.03, 0.0)
-	add_child(shadow)
-
 	# Falling item — hidden until the marker gets close to the truck.
 	# Actual mesh is built in _build_item_mesh() after is_harmful is known.
 	garbage_bag.position.y = BAG_START_Y
@@ -113,7 +80,7 @@ func _build_garbage_bag() -> void:
 	var bag_mat := StandardMaterial3D.new()
 	bag_mat.albedo_color = GARBAGE_BAG_COLOR
 	bag_mat.roughness = 0.8
-	bag_mat.metallic = 0.1
+	bag_mat.metallic = 0.0
 	bag_mat.emission_enabled = true
 	bag_mat.emission = Color(0.1, 0.4, 0.1, 1.0)
 	bag_mat.emission_energy_multiplier = 0.5
@@ -166,7 +133,7 @@ func _build_piano() -> void:
 
 	var body_mat := StandardMaterial3D.new()
 	body_mat.albedo_color = Color(0.12, 0.12, 0.15, 1.0)
-	body_mat.metallic = 0.3
+	body_mat.metallic = 0.5
 	body_mat.roughness = 0.2
 	body_mat.emission_enabled = true
 	body_mat.emission = Color(0.15, 0.15, 0.2, 1.0)
@@ -224,7 +191,7 @@ func _build_tv() -> void:
 	screen_mat.albedo_color = Color(0.35, 0.55, 1.0, 1.0)
 	screen_mat.emission_enabled = true
 	screen_mat.emission = Color(0.2, 0.4, 1.0, 1.0)
-	screen_mat.emission_energy_multiplier = 3.0
+	screen_mat.emission_energy_multiplier = 2.0
 	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	screen.material_override = screen_mat
 	screen.position = Vector3(0.0, 0.0, -0.53)
@@ -365,7 +332,7 @@ func _process(delta: float) -> void:
 	var pulse := (sin(pulse_time) + 1.0) * 0.5
 	var mat: StandardMaterial3D = marker_mesh.material_override
 	if mat:
-		mat.emission_energy_multiplier = lerpf(1.0, 4.0, pulse)
+		mat.emission_energy_multiplier = lerpf(0.8, 2.5, pulse)
 
 func _on_body_entered(body: Node3D) -> void:
 	if body.is_in_group("truck") and not collected:
