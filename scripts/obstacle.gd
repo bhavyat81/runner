@@ -220,4 +220,5 @@ func _build_cone(color: Color) -> void:
 
 func _on_body_entered(body: Node3D) -> void:
 	if body.is_in_group("truck"):
+		GameManager.break_combo()
 		body.die()

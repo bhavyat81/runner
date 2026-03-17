@@ -12,8 +12,14 @@ const LANE_SWITCH_SPEED: float = 10.0
 const JUMP_SPEED: float = 9.0
 const GRAVITY: float = 28.0
 
+# Tilt constants
+const TILT_AMOUNT: float = 0.15
+const TILT_SPEED: float = 8.0
+
 var target_x: float = 0.0
 var is_dead: bool = false
+var invincible: bool = false
+var tilt_target: float = 0.0
 
 # Touch swipe detection
 var touch_start: Vector2 = Vector2.ZERO
@@ -41,6 +47,10 @@ func _physics_process(delta: float) -> void:
 
 	# Smooth X lane transition
 	position.x = lerp(position.x, target_x, LANE_SWITCH_SPEED * delta)
+
+	# Apply tilt and ease back to upright
+	rotation.z = lerp(rotation.z, tilt_target, TILT_SPEED * delta)
+	tilt_target = lerp(tilt_target, 0.0, TILT_SPEED * 0.5 * delta)
 
 	move_and_slide()
 
@@ -73,13 +83,18 @@ func _change_lane(direction: int) -> void:
 	if new_lane != current_lane:
 		current_lane = new_lane
 		target_x = LANES[current_lane]
+		tilt_target = -TILT_AMOUNT * direction
 
 func _try_jump() -> void:
 	if is_on_floor():
 		velocity.y = JUMP_SPEED
 
+func set_invincible(value: bool) -> void:
+	invincible = value
+
 func die() -> void:
-	if is_dead:
+	if is_dead or invincible:
 		return
 	is_dead = true
 	died.emit()
+

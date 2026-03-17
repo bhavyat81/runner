@@ -33,7 +33,7 @@ func _build_road() -> void:
 	mesh.size = Vector3(ROAD_HALF_WIDTH * 2.0, 0.1, SEGMENT_LENGTH)
 	road.mesh = mesh
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.28, 0.28, 0.28, 1.0)
+	mat.albedo_color = Color(0.18, 0.18, 0.2, 1.0)
 	road.material_override = mat
 	add_child(road)
 
