@@ -32,6 +32,7 @@ const MARKER_SCENE := preload("res://scenes/garbage_marker.tscn")
 const SPEED_BOOST_SCENE := preload("res://scenes/speed_boost.tscn")
 const POWERUP_SCENE := preload("res://scenes/powerup.tscn")
 const TRAFFIC_CAR_SCENE := preload("res://scenes/traffic_car.tscn")
+const COIN_SCENE := preload("res://scenes/coin.tscn")
 
 const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
@@ -58,6 +59,8 @@ var boost_container: Node3D = null
 var powerup_container: Node3D = null
 var traffic_container: Node3D = null
 var flying_container: Node3D = null
+var coin_container: Node3D = null
+var scenery_container: Node3D = null
 
 var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
@@ -82,6 +85,7 @@ var _combo_label: Label = null
 var _combo_tween: Tween = null
 var _powerup_hud_label: Label = null
 var _challenge_hud_label: Label = null
+var _coin_hud_label: Label = null
 var _toast_label: Label = null
 var _toast_tween: Tween = null
 var _phase_label: Label = null
@@ -94,30 +98,33 @@ const GHOST_MODE_ALPHA: float = 0.35
 # Environment phase elements
 var _bridge_left: Node3D = null
 var _bridge_right: Node3D = null
-var _tunnel_ceiling: Node3D = null
+var _sun_mesh: Node3D = null
 var _moon_nodes: Array[Node3D] = []
 
-# Day/Night: int keys 0=Night 1=Dawn 2=Day 3=Dusk
-const DAY_CONFIGS: Dictionary = {
-0: {"sun_color": Color(0.3, 0.35, 0.55), "sun_energy": 0.2,
-"ambient": Color(0.15, 0.18, 0.35), "ambient_e": 0.35, "sky": Color(0.03, 0.03, 0.12)},
-1: {"sun_color": Color(1.0, 0.6, 0.3), "sun_energy": 0.8,
-"ambient": Color(0.5, 0.35, 0.25), "ambient_e": 0.5, "sky": Color(0.25, 0.12, 0.06)},
-2: {"sun_color": Color(1.0, 0.95, 0.85), "sun_energy": 1.4,
-"ambient": Color(0.5, 0.55, 0.7), "ambient_e": 0.7, "sky": Color(0.2, 0.35, 0.6)},
-3: {"sun_color": Color(0.9, 0.5, 0.2), "sun_energy": 0.7,
-"ambient": Color(0.4, 0.25, 0.3), "ambient_e": 0.45, "sky": Color(0.18, 0.1, 0.15)},
-}
+# Scenery elements that scroll with the road
+var _scenery_left: Array[Node3D] = []
+var _scenery_right: Array[Node3D] = []
+var _fish_nodes: Array[Node3D] = []
+var _fish_times: Array[float] = []
+# Static (non-scrolling) background scenery for current level
+var _static_scenery: Array[Node3D] = []
 
-enum WeatherType { CLEAR, RAIN, FOG, THUNDERSTORM }
-var _current_weather: int = WeatherType.CLEAR
-var _weather_timer: float = 60.0
-var _thunder_timer: float = 0.0
-var _rain_nodes: Array[Node3D] = []
+# Day/Night: int keys 0=Night 1=Dawn 2=Day 3=Dusk (City level only)
+const DAY_CONFIGS: Dictionary = {
+0: {"sun_color": Color(0.3, 0.35, 0.55), "sun_energy": 0.25,
+"ambient": Color(0.2, 0.22, 0.38), "ambient_e": 0.45, "sky": Color(0.05, 0.05, 0.18)},
+1: {"sun_color": Color(1.0, 0.65, 0.35), "sun_energy": 1.0,
+"ambient": Color(0.55, 0.4, 0.28), "ambient_e": 0.6, "sky": Color(0.28, 0.15, 0.08)},
+2: {"sun_color": Color(1.0, 0.98, 0.9), "sun_energy": 1.7,
+"ambient": Color(0.55, 0.6, 0.75), "ambient_e": 0.8, "sky": Color(0.25, 0.45, 0.75)},
+3: {"sun_color": Color(0.95, 0.55, 0.22), "sun_energy": 0.9,
+"ambient": Color(0.45, 0.28, 0.32), "ambient_e": 0.5, "sky": Color(0.22, 0.12, 0.18)},
+}
 
 var _fly_timer: float = 15.0
 var _traffic_timer: float = 5.0
 var _powerup_timer: float = 25.0
+var _coin_timer: float = 8.0
 
 func _ready() -> void:
 	truck.died.connect(_on_truck_died)
@@ -127,7 +134,6 @@ func _ready() -> void:
 	GameManager.speed_boost_activated.connect(_on_speed_boost_activated)
 	GameManager.powerup_activated.connect(_on_powerup_activated)
 	GameManager.powerup_expired.connect(_on_powerup_expired)
-	GameManager.environment_changed.connect(_on_environment_changed)
 	GameManager.pre_game_power_expired.connect(_on_pre_game_power_expired)
 	var am := get_node_or_null("/root/AchievementManager")
 	if am:
@@ -140,6 +146,7 @@ func _ready() -> void:
 	_setup_combo_announcer()
 	_setup_powerup_hud()
 	_setup_challenge_hud()
+	_setup_coin_hud()
 	_setup_phase_label()
 	_setup_environment_elements()
 	_setup_toast()
@@ -162,6 +169,12 @@ func _ready() -> void:
 	flying_container = Node3D.new()
 	flying_container.name = "FlyingContainer"
 	add_child(flying_container)
+	coin_container = Node3D.new()
+	coin_container.name = "CoinContainer"
+	add_child(coin_container)
+	scenery_container = Node3D.new()
+	scenery_container.name = "SceneryContainer"
+	add_child(scenery_container)
 	health_bar.max_value = GameManager.MAX_HEALTH
 	health_bar.value = GameManager.health
 	_style_health_good.bg_color = Color(0.1, 0.8, 0.1)
@@ -176,6 +189,8 @@ func _ready() -> void:
 		pause_menu_instance = pause_menu_scene.instantiate()
 		$HUD.add_child(pause_menu_instance)
 		pause_menu_instance.hide()
+	# Apply the selected level environment
+	_on_environment_changed(GameManager.current_environment)
 	# Activate visual effects for pre-game power
 	_activate_pre_game_power_visuals()
 
@@ -254,21 +269,28 @@ func _process(delta: float) -> void:
 	if _fly_timer <= 0.0:
 		_spawn_flying_object()
 		_fly_timer = randf_range(10.0, 20.0)
-	_weather_timer -= delta
-	if _weather_timer <= 0.0:
-		_pick_random_weather()
-		_weather_timer = randf_range(60.0, 90.0)
-	if _current_weather == WeatherType.THUNDERSTORM:
-		_thunder_timer -= delta
-		if _thunder_timer <= 0.0:
-			_flash_screen(Color(1.0, 1.0, 1.0))
-			shake_camera(0.4, 0.3)
-			_thunder_timer = randf_range(4.0, 10.0)
+	_coin_timer -= delta
+	if _coin_timer <= 0.0:
+		_spawn_coin_line()
+		_coin_timer = randf_range(5.0, 10.0)
+	if coin_container:
+		for child in coin_container.get_children():
+			child.position.z += spd * delta
+			if child.position.z >= DESPAWN_Z:
+				child.queue_free()
+	if scenery_container:
+		for child in scenery_container.get_children():
+			child.position.z += spd * delta
+			if child.position.z >= DESPAWN_Z:
+				child.position.z -= SEGMENT_LENGTH * NUM_SEGMENTS
 	_update_day_night()
+	_update_fish(delta)
 	score_label.text = "Score: %d" % GameManager.score
 	garbage_label.text = "Bags: %d" % GameManager.garbage_collected
 	distance_label.text = "%dm" % int(GameManager.distance)
 	health_label.text = "HP: %d" % GameManager.health
+	if _coin_hud_label:
+		_coin_hud_label.text = "🪙 %d" % GameManager.coins
 	_update_fov(delta)
 	_update_powerup_hud()
 	_update_pre_power_hud()
@@ -299,13 +321,6 @@ func _physics_process(delta: float) -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
 		return
 	_process_flying_objects(delta)
-	for rn in _rain_nodes:
-		if is_instance_valid(rn):
-			rn.position.y -= 12.0 * delta
-			rn.position.z += GameManager.current_speed * 0.3 * delta
-			if rn.position.y < -0.5:
-				rn.position.y = randf_range(8.0, 14.0)
-				rn.position.z = randf_range(-20.0, 5.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -451,6 +466,18 @@ func _setup_challenge_hud() -> void:
 	ch_layer.add_child(_challenge_hud_label)
 	_update_challenge_hud_labels()
 
+func _setup_coin_hud() -> void:
+	var coin_layer := CanvasLayer.new()
+	coin_layer.layer = 8
+	add_child(coin_layer)
+	_coin_hud_label = Label.new()
+	_coin_hud_label.position = Vector2(16, 170)
+	_coin_hud_label.add_theme_font_size_override("font_size", 28)
+	_coin_hud_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.0))
+	_coin_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coin_hud_label.text = "🪙 0"
+	coin_layer.add_child(_coin_hud_label)
+
 func _update_challenge_hud_labels() -> void:
 	if _challenge_hud_label == null:
 		return
@@ -495,9 +522,9 @@ func _setup_environment_elements() -> void:
 	_bridge_right = _create_bridge_railing(6.0)
 	_bridge_left.visible = false
 	_bridge_right.visible = false
-	# Tunnel ceiling with orange lights (hidden initially)
-	_tunnel_ceiling = _create_tunnel_ceiling()
-	_tunnel_ceiling.visible = false
+	# Sun mesh for Highway (hidden initially)
+	_sun_mesh = _create_sun_mesh()
+	_sun_mesh.visible = false
 
 func _create_bridge_railing(x_pos: float) -> Node3D:
 	var railing := Node3D.new()
@@ -516,33 +543,44 @@ func _create_bridge_railing(x_pos: float) -> Node3D:
 	railing.position.x = x_pos
 	return railing
 
-func _create_tunnel_ceiling() -> Node3D:
-	var ceiling := Node3D.new()
-	ceiling.name = "TunnelCeiling"
-	ceiling.position.y = 8.0
-	add_child(ceiling)
-	# Main ceiling slab
-	var ceil_mesh := BoxMesh.new()
-	ceil_mesh.size = Vector3(18.0, 1.2, 220.0)
-	var ci := MeshInstance3D.new()
-	ci.mesh = ceil_mesh
-	var ceil_mat := StandardMaterial3D.new()
-	ceil_mat.albedo_color = Color(0.08, 0.08, 0.1)
-	ci.material_override = ceil_mat
-	ci.position = Vector3(0.0, 0.0, -80.0)
-	ceiling.add_child(ci)
-	# Orange tunnel lights along the ceiling
-	for zi in range(-70, 30, 15):  # span from spawn zone to despawn zone
-		var light := OmniLight3D.new()
-		light.light_color = Color(1.0, 0.55, 0.1)
-		light.light_energy = 2.5
-		light.omni_range = 18.0
-		light.position = Vector3(0.0, -1.0, float(zi))
-		ceiling.add_child(light)
-	return ceiling
+func _create_sun_mesh() -> Node3D:
+	var sun_node := Node3D.new()
+	sun_node.name = "SunMesh"
+	add_child(sun_node)
+	var sphere := SphereMesh.new()
+	sphere.radius = 8.0
+	sphere.height = 16.0
+	var mi := MeshInstance3D.new()
+	mi.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.95, 0.4, 1.0)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.9, 0.2, 1.0)
+	mat.emission_energy_multiplier = 3.5
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.set_surface_override_material(0, mat)
+	mi.position = Vector3(60.0, 45.0, -220.0)
+	sun_node.add_child(mi)
+	# Glow halo
+	var halo_mesh := SphereMesh.new()
+	halo_mesh.radius = 11.0
+	halo_mesh.height = 22.0
+	var halo := MeshInstance3D.new()
+	halo.mesh = halo_mesh
+	var halo_mat := StandardMaterial3D.new()
+	halo_mat.albedo_color = Color(1.0, 0.9, 0.3, 0.18)
+	halo_mat.emission_enabled = true
+	halo_mat.emission = Color(1.0, 0.85, 0.2, 1.0)
+	halo_mat.emission_energy_multiplier = 1.5
+	halo_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	halo_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	halo.set_surface_override_material(0, halo_mat)
+	halo.position = Vector3(60.0, 45.0, -220.0)
+	sun_node.add_child(halo)
+	return sun_node
 
 func _set_lighting(p_sun_color: Color, p_sun_energy: float,
-		p_ambient: Color, p_sky: Color) -> void:
+		p_ambient: Color, p_sky: Color, p_fog: bool = false) -> void:
 	if sun:
 		sun.light_color = p_sun_color
 		sun.light_energy = p_sun_energy
@@ -550,6 +588,7 @@ func _set_lighting(p_sun_color: Color, p_sun_energy: float,
 		var env: Environment = world_env.environment
 		env.ambient_light_color = p_ambient
 		env.background_color = p_sky
+		env.fog_enabled = p_fog
 
 func _set_moon_stars_visible(make_visible: bool) -> void:
 	for n in _moon_nodes:
@@ -687,47 +726,59 @@ func _on_pre_game_power_expired() -> void:
 			pass  # FOV returns to normal naturally via _update_fov
 
 func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
+	# Clear previous scenery
+	if scenery_container:
+		for child in scenery_container.get_children():
+			child.queue_free()
+	for node in _static_scenery:
+		if is_instance_valid(node):
+			node.queue_free()
+	_static_scenery.clear()
+	_scenery_left.clear()
+	_scenery_right.clear()
+	_fish_nodes.clear()
+	_fish_times.clear()
+
 	match env:
 		GameManager.GameEnvironment.CITY:
 			building_container.visible = true
 			_set_lighting(
-				Color(0.3, 0.35, 0.55), 0.2,
-				Color(0.15, 0.18, 0.35), Color(0.03, 0.03, 0.12))
+				Color(1.0, 0.98, 0.9), 1.7,
+				Color(0.55, 0.6, 0.75), Color(0.25, 0.45, 0.75))
 			if _bridge_left: _bridge_left.visible = false
 			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			if _sun_mesh: _sun_mesh.visible = false
 			_set_moon_stars_visible(true)
-			_show_phase_announcement("CITY")
 		GameManager.GameEnvironment.HIGHWAY:
 			building_container.visible = false
 			_set_lighting(
-				Color(1.0, 0.95, 0.85), 1.4,
-				Color(0.5, 0.55, 0.7), Color(0.2, 0.35, 0.6))
+				Color(1.0, 0.88, 0.6), 1.6,
+				Color(0.6, 0.55, 0.35), Color(0.35, 0.55, 0.85))
 			if _bridge_left: _bridge_left.visible = false
 			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			if _sun_mesh: _sun_mesh.visible = true
 			_set_moon_stars_visible(false)
-			_show_phase_announcement("HIGHWAY")
+			_setup_highway_scenery()
+		GameManager.GameEnvironment.DESERT:
+			building_container.visible = false
+			_set_lighting(
+				Color(1.0, 0.95, 0.75), 2.0,
+				Color(0.75, 0.65, 0.4), Color(0.6, 0.75, 0.9))
+			if _bridge_left: _bridge_left.visible = false
+			if _bridge_right: _bridge_right.visible = false
+			if _sun_mesh: _sun_mesh.visible = false
+			_set_moon_stars_visible(false)
+			_setup_desert_scenery()
 		GameManager.GameEnvironment.BRIDGE:
 			building_container.visible = false
 			_set_lighting(
-				Color(0.7, 0.85, 1.0), 0.9,
-				Color(0.3, 0.4, 0.6), Color(0.1, 0.2, 0.4))
+				Color(0.75, 0.88, 1.0), 1.0,
+				Color(0.3, 0.45, 0.65), Color(0.12, 0.25, 0.48))
 			if _bridge_left: _bridge_left.visible = true
 			if _bridge_right: _bridge_right.visible = true
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
+			if _sun_mesh: _sun_mesh.visible = false
 			_set_moon_stars_visible(false)
-			_show_phase_announcement("BRIDGE")
-		GameManager.GameEnvironment.TUNNEL:
-			building_container.visible = false
-			_set_lighting(
-				Color(0.4, 0.3, 0.2), 0.1,
-				Color(0.1, 0.1, 0.1), Color(0.02, 0.02, 0.02))
-			if _bridge_left: _bridge_left.visible = false
-			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = true
-			_set_moon_stars_visible(false)
-			_show_phase_announcement("TUNNEL")
+			_setup_bridge_scenery()
 	for seg in road_segments:
 		if seg.has_method("apply_environment"):
 			seg.apply_environment(env)
@@ -905,50 +956,270 @@ func _update_day_night() -> void:
 		env.background_color = from_cfg["sky"].lerp(to_cfg["sky"], t)
 		env.ambient_light_color = from_cfg["ambient"].lerp(to_cfg["ambient"], t)
 		env.ambient_light_energy = lerpf(from_cfg["ambient_e"], to_cfg["ambient_e"], t)
+	# Show stars/moon only at night (phase 0) and dusk (phase 3)
+	var night_visibility: float = 0.0
+	if phase_int == 0:
+		night_visibility = 1.0
+	elif phase_int == 3:
+		night_visibility = phase_t
+	elif phase_int == 1:
+		night_visibility = 1.0 - phase_t
+	_set_moon_stars_visible(night_visibility > 0.3)
 
-func _pick_random_weather() -> void:
-	var types := [WeatherType.CLEAR, WeatherType.RAIN, WeatherType.FOG, WeatherType.THUNDERSTORM]
-	_apply_weather(types[randi() % types.size()])
+# --- Level-specific scenery setup ---
+func _setup_highway_scenery() -> void:
+	var grass_mat := StandardMaterial3D.new()
+	grass_mat.albedo_color = Color(0.25, 0.65, 0.15, 1.0)
+	grass_mat.roughness = 0.9
+	var tree_spacing: float = 20.0
+	var num_trees: int = 12
+	for i in range(num_trees):
+		var z_pos: float = -float(i) * tree_spacing
+		for side in [-1, 1]:
+			var x_pos: float = side * 12.0
+			# Grass plane strip
+			var grass_mi := MeshInstance3D.new()
+			var grass_mesh := BoxMesh.new()
+			grass_mesh.size = Vector3(8.0, 0.15, tree_spacing)
+			grass_mi.mesh = grass_mesh
+			grass_mi.material_override = grass_mat
+			grass_mi.position = Vector3(x_pos, 0.05, z_pos)
+			scenery_container.add_child(grass_mi)
+			_scenery_left.append(grass_mi) if side < 0 else _scenery_right.append(grass_mi)
+			# Tree
+			var tree := _build_tree()
+			tree.position = Vector3(x_pos + side * randf_range(1.0, 3.0),
+				0.0, z_pos + randf_range(-8.0, 8.0))
+			scenery_container.add_child(tree)
 
-func _apply_weather(w_type: int) -> void:
-	_current_weather = w_type
-	for n in _rain_nodes:
-		if is_instance_valid(n):
-			n.queue_free()
-	_rain_nodes.clear()
-	if world_env and world_env.environment:
-		var env: Environment = world_env.environment
-		match w_type:
-			WeatherType.CLEAR:
-				env.fog_enabled = true
-				env.fog_density = 0.008
-			WeatherType.FOG:
-				env.fog_enabled = true
-				env.fog_density = 0.04
-			WeatherType.RAIN:
-				env.fog_enabled = true
-				env.fog_density = 0.015
-				_create_rain()
-			WeatherType.THUNDERSTORM:
-				env.fog_enabled = true
-				env.fog_density = 0.015
-				_create_rain()
-				_thunder_timer = randf_range(3.0, 7.0)
+func _build_tree() -> Node3D:
+	var tree := Node3D.new()
+	var trunk_mat := StandardMaterial3D.new()
+	trunk_mat.albedo_color = Color(0.38, 0.22, 0.08, 1.0)
+	trunk_mat.roughness = 0.85
+	var trunk := MeshInstance3D.new()
+	var trunk_mesh := CylinderMesh.new()
+	var trunk_h := randf_range(2.0, 4.0)
+	trunk_mesh.top_radius = 0.18
+	trunk_mesh.bottom_radius = 0.28
+	trunk_mesh.height = trunk_h
+	trunk.mesh = trunk_mesh
+	trunk.material_override = trunk_mat
+	trunk.position = Vector3(0.0, trunk_h * 0.5, 0.0)
+	tree.add_child(trunk)
+	var canopy_mat := StandardMaterial3D.new()
+	canopy_mat.albedo_color = Color(0.18, 0.55, 0.12, 1.0)
+	canopy_mat.roughness = 0.9
+	var canopy := MeshInstance3D.new()
+	var canopy_mesh := SphereMesh.new()
+	var canopy_r := randf_range(1.2, 2.2)
+	canopy_mesh.radius = canopy_r
+	canopy_mesh.height = canopy_r * 2.0
+	canopy.mesh = canopy_mesh
+	canopy.material_override = canopy_mat
+	canopy.position = Vector3(0.0, trunk_h + canopy_r * 0.7, 0.0)
+	tree.add_child(canopy)
+	return tree
 
-func _create_rain() -> void:
-	for _i in range(30):
-		var rain := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(0.04, randf_range(0.5, 1.2), 0.04)
-		rain.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.7, 0.8, 1.0, 0.6)
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		rain.material_override = mat
-		rain.position = Vector3(randf_range(-8.0, 8.0), randf_range(1.0, 12.0), randf_range(-20.0, 5.0))
-		add_child(rain)
-		_rain_nodes.append(rain)
+func _setup_desert_scenery() -> void:
+	var sand_mat := StandardMaterial3D.new()
+	sand_mat.albedo_color = Color(0.88, 0.76, 0.5, 1.0)
+	sand_mat.roughness = 0.95
+	var spacing: float = 18.0
+	var num_items: int = 14
+	var hoarding_texts := ["OASIS 50km →", "HOT SANDS!", "DESERT INN", "MIRAGE COLA",
+		"NO WATER HERE", "KEEP DRIVING", "DESERT RACE", "SUN & SAND"]
+	for i in range(num_items):
+		var z_pos: float = -float(i) * spacing
+		for side in [-1, 1]:
+			var x_pos: float = side * 12.0
+			# Sand plane
+			var sand_mi := MeshInstance3D.new()
+			var sand_mesh := BoxMesh.new()
+			sand_mesh.size = Vector3(8.0, 0.12, spacing)
+			sand_mi.mesh = sand_mesh
+			sand_mi.material_override = sand_mat
+			sand_mi.position = Vector3(x_pos, 0.04, z_pos)
+			scenery_container.add_child(sand_mi)
+			# Cactus every other position
+			if i % 2 == 0:
+				var cactus := _build_cactus()
+				cactus.position = Vector3(x_pos + side * randf_range(0.5, 2.5),
+					0.0, z_pos + randf_range(-6.0, 6.0))
+				scenery_container.add_child(cactus)
+			else:
+				# Hoarding/billboard
+				var board := _build_hoarding(hoarding_texts[i % hoarding_texts.size()])
+				board.position = Vector3(x_pos + side * 1.5, 0.0, z_pos)
+				scenery_container.add_child(board)
+
+func _build_cactus() -> Node3D:
+	var cactus := Node3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.22, 0.52, 0.12, 1.0)
+	mat.roughness = 0.8
+	# Main trunk
+	var trunk := MeshInstance3D.new()
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = 0.22
+	trunk_mesh.bottom_radius = 0.25
+	trunk_mesh.height = randf_range(2.5, 4.0)
+	trunk.mesh = trunk_mesh
+	trunk.material_override = mat
+	var trunk_h: float = trunk_mesh.height
+	trunk.position = Vector3(0.0, trunk_h * 0.5, 0.0)
+	cactus.add_child(trunk)
+	# Left arm
+	var arm_l := MeshInstance3D.new()
+	var arm_l_mesh := CylinderMesh.new()
+	arm_l_mesh.top_radius = 0.14
+	arm_l_mesh.bottom_radius = 0.16
+	arm_l_mesh.height = 1.5
+	arm_l.mesh = arm_l_mesh
+	arm_l.material_override = mat
+	arm_l.position = Vector3(-0.6, trunk_h * 0.65, 0.0)
+	arm_l.rotation_degrees.z = 60.0
+	cactus.add_child(arm_l)
+	# Right arm
+	var arm_r := MeshInstance3D.new()
+	arm_r.mesh = arm_l_mesh
+	arm_r.material_override = mat
+	arm_r.position = Vector3(0.6, trunk_h * 0.75, 0.0)
+	arm_r.rotation_degrees.z = -60.0
+	cactus.add_child(arm_r)
+	return cactus
+
+func _build_hoarding(sign_text: String) -> Node3D:
+	var board := Node3D.new()
+	var pole_mat := StandardMaterial3D.new()
+	pole_mat.albedo_color = Color(0.5, 0.45, 0.35, 1.0)
+	pole_mat.roughness = 0.85
+	# Two poles
+	for px in [-0.9, 0.9]:
+		var pole := MeshInstance3D.new()
+		var pole_mesh := CylinderMesh.new()
+		pole_mesh.top_radius = 0.08
+		pole_mesh.bottom_radius = 0.1
+		pole_mesh.height = 3.5
+		pole.mesh = pole_mesh
+		pole.material_override = pole_mat
+		pole.position = Vector3(px, 1.75, 0.0)
+		board.add_child(pole)
+	# Sign panel
+	var panel := MeshInstance3D.new()
+	var panel_mesh := BoxMesh.new()
+	panel_mesh.size = Vector3(2.8, 1.2, 0.15)
+	panel.mesh = panel_mesh
+	var panel_mat := StandardMaterial3D.new()
+	panel_mat.albedo_color = Color(0.95, 0.88, 0.62, 1.0)
+	panel_mat.roughness = 0.6
+	panel_mat.emission_enabled = true
+	panel_mat.emission = Color(0.8, 0.7, 0.4, 1.0)
+	panel_mat.emission_energy_multiplier = 0.3
+	panel.material_override = panel_mat
+	panel.position = Vector3(0.0, 3.1, 0.0)
+	board.add_child(panel)
+	# Text label
+	var lbl := Label3D.new()
+	lbl.text = sign_text
+	lbl.font_size = 58
+	lbl.modulate = Color(0.2, 0.1, 0.05, 1.0)
+	lbl.position = Vector3(0.0, 3.1, 0.09)
+	lbl.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	board.add_child(lbl)
+	return board
+
+func _setup_bridge_scenery() -> void:
+	var water_mat := StandardMaterial3D.new()
+	water_mat.albedo_color = Color(0.08, 0.35, 0.62, 0.85)
+	water_mat.roughness = 0.15
+	water_mat.metallic = 0.3
+	water_mat.emission_enabled = true
+	water_mat.emission = Color(0.05, 0.25, 0.5, 1.0)
+	water_mat.emission_energy_multiplier = 0.4
+	water_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	# Long static water planes on both sides (non-scrolling, added directly to scene)
+	for side in [-1, 1]:
+		var water := MeshInstance3D.new()
+		var water_mesh := BoxMesh.new()
+		water_mesh.size = Vector3(28.0, 0.4, 2000.0)
+		water.mesh = water_mesh
+		water.material_override = water_mat
+		water.position = Vector3(side * 24.0, -1.5, -900.0)
+		add_child(water)
+		_static_scenery.append(water)
+	# Spawn fish — stored in scenery_container so they scroll with road movement
+	var num_fish: int = 10
+	for _i in range(num_fish):
+		var fish := _build_fish()
+		var fish_side: float = [-1.0, 1.0][randi() % 2] * randf_range(10.0, 22.0)
+		fish.position = Vector3(fish_side, -1.0, randf_range(-80.0, 0.0))
+		fish.set_meta("bob_time", randf_range(0.0, TAU))
+		fish.set_meta("bob_speed", randf_range(1.2, 2.5))
+		fish.set_meta("base_x", fish_side)
+		scenery_container.add_child(fish)
+		_fish_nodes.append(fish)
+		_fish_times.append(randf_range(0.0, TAU))
+
+func _build_fish() -> Node3D:
+	var fish := Node3D.new()
+	var body_mat := StandardMaterial3D.new()
+	var fish_colors := [
+		Color(1.0, 0.4, 0.1), Color(0.2, 0.6, 1.0), Color(1.0, 0.9, 0.2),
+		Color(0.9, 0.2, 0.4), Color(0.3, 0.85, 0.5)
+	]
+	body_mat.albedo_color = fish_colors[randi() % fish_colors.size()]
+	body_mat.roughness = 0.5
+	body_mat.emission_enabled = true
+	body_mat.emission = body_mat.albedo_color
+	body_mat.emission_energy_multiplier = 0.3
+	var body := MeshInstance3D.new()
+	var body_mesh := SphereMesh.new()
+	body_mesh.radius = 0.35
+	body_mesh.height = 0.9
+	body.mesh = body_mesh
+	body.material_override = body_mat
+	body.rotation_degrees.z = 90.0
+	fish.add_child(body)
+	# Tail
+	var tail := MeshInstance3D.new()
+	var tail_mesh := PrismMesh.new()
+	tail_mesh.size = Vector3(0.4, 0.3, 0.08)
+	tail.mesh = tail_mesh
+	tail.material_override = body_mat
+	tail.position = Vector3(0.45, 0.0, 0.0)
+	fish.add_child(tail)
+	return fish
+
+func _update_fish(delta: float) -> void:
+	if GameManager.current_environment != GameManager.GameEnvironment.BRIDGE:
+		return
+	for i in range(_fish_nodes.size()):
+		if i >= _fish_nodes.size():
+			break
+		var fish: Node3D = _fish_nodes[i]
+		if not is_instance_valid(fish):
+			continue
+		_fish_times[i] += delta * fish.get_meta("bob_speed", 1.8)
+		var t: float = _fish_times[i]
+		# Arc up from water and splash back down — only Y animation here;
+		# forward movement is handled by the scenery_container scroll loop
+		var arc_y: float = maxf(0.0, sin(t) * 3.5) - 1.2
+		fish.position.y = arc_y
+		# Tilt fish with arc
+		fish.rotation_degrees.x = -cos(t) * 25.0 * (1.0 if sin(t) > 0.0 else -1.0)
+
+func _spawn_coin_line() -> void:
+	if GameManager.current_state != GameManager.GameState.PLAYING:
+		return
+	var lane: int = randi() % 3
+	var lane_x: float = [-3.0, 0.0, 3.0][lane]
+	var num_coins: int = randi_range(3, 8)
+	var coin_spacing: float = randf_range(3.0, 4.0)
+	for i in range(num_coins):
+		var coin: Area3D = COIN_SCENE.instantiate()
+		coin_container.add_child(coin)
+		coin.position = Vector3(lane_x, 0.55, SPAWN_Z - i * coin_spacing)
 
 func _spawn_flying_object() -> void:
 	var fly_type: int = randi() % 3

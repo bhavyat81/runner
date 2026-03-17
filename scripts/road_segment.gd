@@ -37,11 +37,11 @@ func apply_environment(env: GameManager.GameEnvironment) -> void:
 				GameManager.GameEnvironment.CITY:
 					mat.albedo_color = Color(0.12, 0.12, 0.14)
 				GameManager.GameEnvironment.HIGHWAY:
-					mat.albedo_color = Color(0.18, 0.17, 0.15)
+					mat.albedo_color = Color(0.22, 0.21, 0.20)
+				GameManager.GameEnvironment.DESERT:
+					mat.albedo_color = Color(0.72, 0.60, 0.38)
 				GameManager.GameEnvironment.BRIDGE:
 					mat.albedo_color = Color(0.20, 0.19, 0.18)
-				GameManager.GameEnvironment.TUNNEL:
-					mat.albedo_color = Color(0.08, 0.08, 0.10)
 
 func _find_first_mesh_child() -> MeshInstance3D:
 	for child in get_children():
