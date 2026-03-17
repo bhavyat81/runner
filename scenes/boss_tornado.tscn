@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://bosstornado3d"]
+
+[ext_resource type="Script" path="res://scripts/boss_tornado.gd" id="1_boss"]
+
+[node name="BossTornado" type="Area3D"]
+collision_layer = 64
+collision_mask = 1
+script = ExtResource("1_boss")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
