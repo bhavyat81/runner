@@ -25,6 +25,7 @@ func _ready() -> void:
 	_build_edge_lines()
 	_build_curbs()
 	_build_footpaths()
+	_build_street_lights()
 
 # --- Road surface (dark asphalt) ---
 func _build_road() -> void:
@@ -106,4 +107,51 @@ func _build_footpaths() -> void:
 		# Centre at ±6.0; top of footpath sits at Y = FOOTPATH_HEIGHT (raised above road)
 		fp.position = Vector3(s * FOOTPATH_CENTER_OFFSET, FOOTPATH_HEIGHT * 0.5, 0.0)
 		add_child(fp)
+
+# --- Street lights along footpaths (every ~13 units, both sides) ---
+func _build_street_lights() -> void:
+	var pole_mat := StandardMaterial3D.new()
+	pole_mat.albedo_color = Color(0.25, 0.25, 0.28)
+
+	var lamp_mat := StandardMaterial3D.new()
+	lamp_mat.albedo_color = Color(1.0, 0.9, 0.7)
+	lamp_mat.emission_enabled = true
+	lamp_mat.emission = Color(1.0, 0.9, 0.7)
+	lamp_mat.emission_energy_multiplier = 2.0
+	lamp_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+	var num_lights: int = 3
+	var spacing: float = SEGMENT_LENGTH / num_lights
+	for i in range(num_lights):
+		var z_pos: float = -SEGMENT_LENGTH * 0.5 + (i + 0.5) * spacing
+		for s: int in CURB_X_SIGN:
+			var pole_x: float = s * (FOOTPATH_CENTER_OFFSET + FOOTPATH_HALF_WIDTH * 0.5)
+
+			# Pole (thin tall cylinder)
+			var pole := MeshInstance3D.new()
+			var pole_mesh := CylinderMesh.new()
+			pole_mesh.top_radius = 0.05
+			pole_mesh.bottom_radius = 0.05
+			pole_mesh.height = 4.5
+			pole.mesh = pole_mesh
+			pole.set_surface_override_material(0, pole_mat)
+			pole.position = Vector3(pole_x, 2.25, z_pos)
+			add_child(pole)
+
+			# Lamp head (small box at top of pole)
+			var lamp := MeshInstance3D.new()
+			var lamp_mesh := BoxMesh.new()
+			lamp_mesh.size = Vector3(0.4, 0.2, 0.4)
+			lamp.mesh = lamp_mesh
+			lamp.set_surface_override_material(0, lamp_mat)
+			lamp.position = Vector3(pole_x, 4.65, z_pos)
+			add_child(lamp)
+
+			# OmniLight3D at lamp position to illuminate road
+			var light := OmniLight3D.new()
+			light.light_color = Color(1.0, 0.92, 0.75)
+			light.light_energy = 0.6
+			light.omni_range = 9.0
+			light.position = Vector3(pole_x, 4.5, z_pos)
+			add_child(light)
 
