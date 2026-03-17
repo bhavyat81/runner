@@ -323,7 +323,7 @@ func select_skin(skin_id: int) -> void:
 # --- Daily challenges ---
 func _init_daily_challenges() -> void:
 	var date := Time.get_date_dict_from_system()
-	var today: int = date["month"] * 31 + date["day"]
+	var today: int = date["month"] * 100 + date["day"]
 	var loaded_day: int = _daily_challenge_day
 	if loaded_day != today:
 		# New day — pick 3 challenges based on day-of-year seed
