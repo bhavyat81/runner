@@ -408,9 +408,11 @@ func _setup_powerup_hud() -> void:
 	pu_layer.layer = 7
 	add_child(pu_layer)
 	_powerup_hud_label = Label.new()
-	_powerup_hud_label.position = Vector2(16, 200)
-	_powerup_hud_label.add_theme_font_size_override("font_size", 26)
+	_powerup_hud_label.position = Vector2(16, 158)
+	_powerup_hud_label.add_theme_font_size_override("font_size", 20)
 	_powerup_hud_label.add_theme_color_override("font_color", Color(0.3, 1.0, 1.0))
+	_powerup_hud_label.add_theme_constant_override("outline_size", 3)
+	_powerup_hud_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_powerup_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pu_layer.add_child(_powerup_hud_label)
 
@@ -434,9 +436,11 @@ func _setup_pre_power_hud() -> void:
 	pp_layer.layer = 7
 	add_child(pp_layer)
 	_pre_power_hud_label = Label.new()
-	_pre_power_hud_label.position = Vector2(16, 228)
-	_pre_power_hud_label.add_theme_font_size_override("font_size", 22)
+	_pre_power_hud_label.position = Vector2(16, 182)
+	_pre_power_hud_label.add_theme_font_size_override("font_size", 18)
 	_pre_power_hud_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	_pre_power_hud_label.add_theme_constant_override("outline_size", 3)
+	_pre_power_hud_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_pre_power_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pp_layer.add_child(_pre_power_hud_label)
 
@@ -459,9 +463,11 @@ func _setup_challenge_hud() -> void:
 	ch_layer.layer = 6
 	add_child(ch_layer)
 	_challenge_hud_label = Label.new()
-	_challenge_hud_label.position = Vector2(16, 240)
-	_challenge_hud_label.add_theme_font_size_override("font_size", 16)
+	_challenge_hud_label.position = Vector2(16, 208)
+	_challenge_hud_label.add_theme_font_size_override("font_size", 14)
 	_challenge_hud_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
+	_challenge_hud_label.add_theme_constant_override("outline_size", 3)
+	_challenge_hud_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_challenge_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ch_layer.add_child(_challenge_hud_label)
 	_update_challenge_hud_labels()
@@ -471,9 +477,11 @@ func _setup_coin_hud() -> void:
 	coin_layer.layer = 8
 	add_child(coin_layer)
 	_coin_hud_label = Label.new()
-	_coin_hud_label.position = Vector2(16, 170)
-	_coin_hud_label.add_theme_font_size_override("font_size", 28)
+	_coin_hud_label.position = Vector2(16, 130)
+	_coin_hud_label.add_theme_font_size_override("font_size", 22)
 	_coin_hud_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.0))
+	_coin_hud_label.add_theme_constant_override("outline_size", 3)
+	_coin_hud_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_coin_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_coin_hud_label.text = "🪙 0"
 	coin_layer.add_child(_coin_hud_label)
@@ -766,7 +774,7 @@ func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
 				Color(0.75, 0.65, 0.4), Color(0.6, 0.75, 0.9))
 			if _bridge_left: _bridge_left.visible = false
 			if _bridge_right: _bridge_right.visible = false
-			if _sun_mesh: _sun_mesh.visible = false
+			if _sun_mesh: _sun_mesh.visible = true
 			_set_moon_stars_visible(false)
 			_setup_desert_scenery()
 		GameManager.GameEnvironment.BRIDGE:
@@ -971,25 +979,37 @@ func _setup_highway_scenery() -> void:
 	var grass_mat := StandardMaterial3D.new()
 	grass_mat.albedo_color = Color(0.25, 0.65, 0.15, 1.0)
 	grass_mat.roughness = 0.9
-	var tree_spacing: float = 20.0
-	var num_trees: int = 12
+	grass_mat.emission_enabled = true
+	grass_mat.emission = Color(0.15, 0.4, 0.08)
+	grass_mat.emission_energy_multiplier = 0.3
+	var tree_spacing: float = 16.0
+	var num_trees: int = 16
 	for i in range(num_trees):
 		var z_pos: float = -float(i) * tree_spacing
 		for side in [-1, 1]:
-			var x_pos: float = side * 12.0
-			# Grass plane strip
+			var x_pos: float = side * 15.0
+			# Wide outer grass plane strip
 			var grass_mi := MeshInstance3D.new()
 			var grass_mesh := BoxMesh.new()
-			grass_mesh.size = Vector3(8.0, 0.15, tree_spacing)
+			grass_mesh.size = Vector3(20.0, 0.2, tree_spacing)
 			grass_mi.mesh = grass_mesh
 			grass_mi.material_override = grass_mat
 			grass_mi.position = Vector3(x_pos, 0.05, z_pos)
 			scenery_container.add_child(grass_mi)
 			_scenery_left.append(grass_mi) if side < 0 else _scenery_right.append(grass_mi)
+			# Inner grass strip filling the gap between road edge and outer scenery
+			var inner_mi := MeshInstance3D.new()
+			var inner_mesh := BoxMesh.new()
+			inner_mesh.size = Vector3(6.0, 0.2, tree_spacing)
+			inner_mi.mesh = inner_mesh
+			inner_mi.material_override = grass_mat
+			inner_mi.position = Vector3(side * 8.0, 0.05, z_pos)
+			scenery_container.add_child(inner_mi)
+			_scenery_left.append(inner_mi) if side < 0 else _scenery_right.append(inner_mi)
 			# Tree
 			var tree := _build_tree()
 			tree.position = Vector3(x_pos + side * randf_range(1.0, 3.0),
-				0.0, z_pos + randf_range(-8.0, 8.0))
+				0.0, z_pos + randf_range(-6.0, 6.0))
 			scenery_container.add_child(tree)
 
 func _build_tree() -> Node3D:
@@ -999,7 +1019,7 @@ func _build_tree() -> Node3D:
 	trunk_mat.roughness = 0.85
 	var trunk := MeshInstance3D.new()
 	var trunk_mesh := CylinderMesh.new()
-	var trunk_h := randf_range(2.0, 4.0)
+	var trunk_h := randf_range(3.0, 5.5)
 	trunk_mesh.top_radius = 0.18
 	trunk_mesh.bottom_radius = 0.28
 	trunk_mesh.height = trunk_h
@@ -1012,7 +1032,7 @@ func _build_tree() -> Node3D:
 	canopy_mat.roughness = 0.9
 	var canopy := MeshInstance3D.new()
 	var canopy_mesh := SphereMesh.new()
-	var canopy_r := randf_range(1.2, 2.2)
+	var canopy_r := randf_range(2.0, 3.5)
 	canopy_mesh.radius = canopy_r
 	canopy_mesh.height = canopy_r * 2.0
 	canopy.mesh = canopy_mesh
@@ -1025,33 +1045,55 @@ func _setup_desert_scenery() -> void:
 	var sand_mat := StandardMaterial3D.new()
 	sand_mat.albedo_color = Color(0.88, 0.76, 0.5, 1.0)
 	sand_mat.roughness = 0.95
+	sand_mat.emission_enabled = true
+	sand_mat.emission = Color(0.6, 0.5, 0.28)
+	sand_mat.emission_energy_multiplier = 0.2
 	var spacing: float = 18.0
-	var num_items: int = 14
+	var num_items: int = 16
 	var hoarding_texts := ["OASIS 50km →", "HOT SANDS!", "DESERT INN", "MIRAGE COLA",
 		"NO WATER HERE", "KEEP DRIVING", "DESERT RACE", "SUN & SAND"]
 	for i in range(num_items):
 		var z_pos: float = -float(i) * spacing
 		for side in [-1, 1]:
-			var x_pos: float = side * 12.0
-			# Sand plane
+			var x_pos: float = side * 15.0
+			# Wide outer sand plane
 			var sand_mi := MeshInstance3D.new()
 			var sand_mesh := BoxMesh.new()
-			sand_mesh.size = Vector3(8.0, 0.12, spacing)
+			sand_mesh.size = Vector3(20.0, 0.15, spacing)
 			sand_mi.mesh = sand_mesh
 			sand_mi.material_override = sand_mat
 			sand_mi.position = Vector3(x_pos, 0.04, z_pos)
 			scenery_container.add_child(sand_mi)
-			# Cactus every other position
-			if i % 2 == 0:
-				var cactus := _build_cactus()
-				cactus.position = Vector3(x_pos + side * randf_range(0.5, 2.5),
-					0.0, z_pos + randf_range(-6.0, 6.0))
-				scenery_container.add_child(cactus)
-			else:
-				# Hoarding/billboard
+			# Inner sand strip filling gap between road and outer sand
+			var inner_mi := MeshInstance3D.new()
+			var inner_mesh := BoxMesh.new()
+			inner_mesh.size = Vector3(6.0, 0.15, spacing)
+			inner_mi.mesh = inner_mesh
+			inner_mi.material_override = sand_mat
+			inner_mi.position = Vector3(side * 8.0, 0.04, z_pos)
+			scenery_container.add_child(inner_mi)
+			# Cactus at every position
+			var cactus := _build_cactus()
+			cactus.position = Vector3(x_pos + side * randf_range(0.5, 2.5),
+				0.0, z_pos + randf_range(-6.0, 6.0))
+			scenery_container.add_child(cactus)
+			# Hoarding every other position
+			if i % 2 == 1:
 				var board := _build_hoarding(hoarding_texts[i % hoarding_texts.size()])
-				board.position = Vector3(x_pos + side * 1.5, 0.0, z_pos)
+				board.position = Vector3(x_pos + side * 1.5, 0.0, z_pos + 4.0)
 				scenery_container.add_child(board)
+			# Sand dune scattered randomly
+			if randf() > 0.5:
+				var dune := _build_sand_dune()
+				dune.position = Vector3(x_pos + side * randf_range(-4.0, 4.0),
+					0.0, z_pos + randf_range(-7.0, 7.0))
+				scenery_container.add_child(dune)
+			# Desert rock scattered randomly
+			if randf() > 0.6:
+				var rock := _build_desert_rock()
+				rock.position = Vector3(x_pos + side * randf_range(-5.0, 5.0),
+					0.0, z_pos + randf_range(-7.0, 7.0))
+				scenery_container.add_child(rock)
 
 func _build_cactus() -> Node3D:
 	var cactus := Node3D.new()
@@ -1061,9 +1103,9 @@ func _build_cactus() -> Node3D:
 	# Main trunk
 	var trunk := MeshInstance3D.new()
 	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.22
-	trunk_mesh.bottom_radius = 0.25
-	trunk_mesh.height = randf_range(2.5, 4.0)
+	trunk_mesh.top_radius = 0.3
+	trunk_mesh.bottom_radius = 0.4
+	trunk_mesh.height = randf_range(3.5, 6.0)
 	trunk.mesh = trunk_mesh
 	trunk.material_override = mat
 	var trunk_h: float = trunk_mesh.height
@@ -1072,22 +1114,55 @@ func _build_cactus() -> Node3D:
 	# Left arm
 	var arm_l := MeshInstance3D.new()
 	var arm_l_mesh := CylinderMesh.new()
-	arm_l_mesh.top_radius = 0.14
-	arm_l_mesh.bottom_radius = 0.16
-	arm_l_mesh.height = 1.5
+	arm_l_mesh.top_radius = 0.2
+	arm_l_mesh.bottom_radius = 0.25
+	arm_l_mesh.height = 2.0
 	arm_l.mesh = arm_l_mesh
 	arm_l.material_override = mat
-	arm_l.position = Vector3(-0.6, trunk_h * 0.65, 0.0)
+	arm_l.position = Vector3(-0.8, trunk_h * 0.65, 0.0)
 	arm_l.rotation_degrees.z = 60.0
 	cactus.add_child(arm_l)
 	# Right arm
 	var arm_r := MeshInstance3D.new()
 	arm_r.mesh = arm_l_mesh
 	arm_r.material_override = mat
-	arm_r.position = Vector3(0.6, trunk_h * 0.75, 0.0)
+	arm_r.position = Vector3(0.8, trunk_h * 0.75, 0.0)
 	arm_r.rotation_degrees.z = -60.0
 	cactus.add_child(arm_r)
 	return cactus
+
+func _build_sand_dune() -> Node3D:
+	var dune := Node3D.new()
+	var dune_mi := MeshInstance3D.new()
+	var dune_mesh := SphereMesh.new()
+	var dune_r := randf_range(1.0, 2.5)
+	dune_mesh.radius = dune_r
+	dune_mesh.height = randf_range(0.5, 1.5)
+	dune_mi.mesh = dune_mesh
+	var dune_mat := StandardMaterial3D.new()
+	dune_mat.albedo_color = Color(
+		randf_range(0.82, 0.94), randf_range(0.68, 0.80), randf_range(0.42, 0.58), 1.0)
+	dune_mat.roughness = 0.95
+	dune_mi.material_override = dune_mat
+	dune.add_child(dune_mi)
+	return dune
+
+func _build_desert_rock() -> Node3D:
+	var rock := Node3D.new()
+	var rock_mi := MeshInstance3D.new()
+	var rock_mesh := SphereMesh.new()
+	var rock_r := randf_range(0.4, 1.0)
+	rock_mesh.radius = rock_r
+	rock_mesh.height = rock_r * randf_range(1.0, 1.6)
+	rock_mi.mesh = rock_mesh
+	var rock_mat := StandardMaterial3D.new()
+	rock_mat.albedo_color = Color(
+		randf_range(0.35, 0.50), randf_range(0.28, 0.40), randf_range(0.22, 0.32), 1.0)
+	rock_mat.roughness = 0.9
+	rock_mi.material_override = rock_mat
+	rock_mi.position = Vector3(0.0, rock_r * 0.3, 0.0)
+	rock.add_child(rock_mi)
+	return rock
 
 func _build_hoarding(sign_text: String) -> Node3D:
 	var board := Node3D.new()
