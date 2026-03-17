@@ -34,6 +34,53 @@ func _ready() -> void:
 	target_x = LANES[current_lane]
 	position = Vector3(0.0, 0.0, 0.0)
 	add_to_group("truck")
+	_setup_truck_appearance()
+
+func _setup_truck_appearance() -> void:
+	# Update cab (Cabin node) to dark green
+	var cabin: MeshInstance3D = get_node_or_null("Cabin")
+	if cabin:
+		var cab_mat := StandardMaterial3D.new()
+		cab_mat.albedo_color = Color(0.1, 0.35, 0.15)
+		cab_mat.metallic = 0.3
+		cab_mat.roughness = 0.5
+		cabin.set_surface_override_material(0, cab_mat)
+	var cabin_roof: MeshInstance3D = get_node_or_null("CabinRoof")
+	if cabin_roof:
+		var roof_mat := StandardMaterial3D.new()
+		roof_mat.albedo_color = Color(0.1, 0.35, 0.15)
+		roof_mat.metallic = 0.3
+		roof_mat.roughness = 0.5
+		cabin_roof.set_surface_override_material(0, roof_mat)
+
+	# Update compactor body color
+	var compactor: MeshInstance3D = get_node_or_null("CompactorBody")
+	if compactor:
+		var comp_mat := StandardMaterial3D.new()
+		comp_mat.albedo_color = Color(0.15, 0.5, 0.2)
+		comp_mat.metallic = 0.3
+		comp_mat.roughness = 0.5
+		compactor.set_surface_override_material(0, comp_mat)
+
+	# Make side stripes bright yellow/green emissive
+	for stripe_name in ["LeftStripe", "RightStripe"]:
+		var stripe: MeshInstance3D = get_node_or_null(stripe_name)
+		if stripe:
+			var stripe_mat := StandardMaterial3D.new()
+			stripe_mat.albedo_color = Color(0.8, 1.0, 0.0)
+			stripe_mat.emission_enabled = true
+			stripe_mat.emission = Color(0.6, 1.0, 0.0)
+			stripe_mat.emission_energy_multiplier = 1.5
+			stripe_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			stripe.set_surface_override_material(0, stripe_mat)
+
+	# Add underglow OmniLight3D beneath the truck
+	var underglow_light := OmniLight3D.new()
+	underglow_light.light_color = Color(0.2, 1.0, 0.3)
+	underglow_light.light_energy = 0.8
+	underglow_light.omni_range = 4.0
+	underglow_light.position = Vector3(0.0, -0.2, 0.0)
+	add_child(underglow_light)
 
 func _physics_process(delta: float) -> void:
 	if is_dead:

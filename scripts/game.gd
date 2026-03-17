@@ -67,15 +67,28 @@ var _style_health_critical: StyleBoxFlat = StyleBoxFlat.new()
 # Pause menu
 var pause_menu_instance: Control = null
 
+# Star twinkle
+var _star_nodes: Array = []
+var _star_twinkle_speeds: Array = []
+var _star_twinkle_offsets: Array = []
+var _star_time: float = 0.0
+
+# Screen flash
+var _flash_rect: ColorRect = null
+const _flash_duration: float = 0.3
+var _flash_timer: float = 0.0
+
 func _ready() -> void:
 	truck.died.connect(_on_truck_died)
 	GameManager.health_changed.connect(_on_health_changed)
 	GameManager.combo_changed.connect(_on_combo_changed)
-	GameManager.garbage_collected_signal.connect(play_collect_sound)
-	GameManager.speed_boost_activated.connect(play_boost_sound)
+	GameManager.garbage_collected_signal.connect(_on_garbage_collected)
+	GameManager.speed_boost_activated.connect(_on_speed_boost_activated)
 	_setup_road()
 	_setup_buildings()
 	_create_moon()
+	_create_stars()
+	_setup_screen_flash()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
 	boost_timer.timeout.connect(_spawn_speed_boost)
@@ -180,6 +193,21 @@ func _process(delta: float) -> void:
 				0.0
 			)
 
+	# Star twinkle
+	_star_time += delta
+	for i in range(_star_nodes.size()):
+		var sn: MeshInstance3D = _star_nodes[i]
+		if is_instance_valid(sn):
+			var mat: StandardMaterial3D = sn.get_surface_override_material(0)
+			if mat:
+				mat.emission_energy_multiplier = 0.5 + 0.5 * sin(_star_time * _star_twinkle_speeds[i] + _star_twinkle_offsets[i])
+
+	# Screen flash fade
+	if _flash_timer > 0.0:
+		_flash_timer -= delta
+		if _flash_rect:
+			_flash_rect.color.a = maxf(0.0, (_flash_timer / _flash_duration) * 0.4)
+
 func _unhandled_input(event: InputEvent) -> void:
 	# "pause" action is mapped to P key in project.godot Input Map
 	if event.is_action_pressed("pause"):
@@ -217,6 +245,31 @@ func play_death_sound() -> void:
 func play_boost_sound() -> void:
 	if boost_sound.stream:
 		boost_sound.play()
+
+# Combined handlers for signals that also trigger screen flash
+func _on_garbage_collected() -> void:
+	play_collect_sound()
+	_flash_screen(Color(0.0, 1.0, 0.2))
+
+func _on_speed_boost_activated() -> void:
+	play_boost_sound()
+	_flash_screen(Color(0.0, 0.4, 1.0))
+
+# --- Screen flash system ---
+func _setup_screen_flash() -> void:
+	var flash_layer := CanvasLayer.new()
+	flash_layer.layer = 10
+	add_child(flash_layer)
+	_flash_rect = ColorRect.new()
+	_flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash_rect.color = Color(0.0, 0.0, 0.0, 0.0)
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash_layer.add_child(_flash_rect)
+
+func _flash_screen(color: Color) -> void:
+	if _flash_rect:
+		_flash_rect.color = Color(color.r, color.g, color.b, 0.4)
+		_flash_timer = _flash_duration
 
 func _setup_road() -> void:
 	for i in range(NUM_SEGMENTS):
@@ -272,7 +325,7 @@ func _create_moon() -> void:
 	moon.mesh = sphere
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.98, 0.96, 0.88, 1.0)
+	mat.albedo_color = Color(0.95, 0.92, 0.82, 1.0)
 	mat.emission_enabled = true
 	mat.emission = Color(1.0, 0.95, 0.82, 1.0)
 	mat.emission_energy_multiplier = 2.8
@@ -299,7 +352,7 @@ func _create_moon() -> void:
 	halo.position = MOON_POSITION
 	add_child(halo)
 
-	# Moon craters — small dark flat discs on the moon surface
+	# Moon craters — 10 small dark spheres overlapping on the moon surface
 	var crater_mat := StandardMaterial3D.new()
 	crater_mat.albedo_color = Color(0.68, 0.65, 0.58, 1.0)
 	crater_mat.emission_enabled = true
@@ -308,10 +361,16 @@ func _create_moon() -> void:
 	crater_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	var crater_data := [
-		# [offset_from_center, radius]
 		[Vector3(-2.2, 1.5, -5.5), 1.1],
 		[Vector3(2.8, -1.0, -5.3), 0.75],
 		[Vector3(-0.5, -3.0, -4.8), 0.55],
+		[Vector3(1.5, 2.8, -5.1), 0.9],
+		[Vector3(-3.5, -1.8, -4.6), 0.6],
+		[Vector3(0.8, -1.5, -5.8), 0.45],
+		[Vector3(-1.8, 3.2, -4.9), 0.7],
+		[Vector3(3.0, 1.5, -4.7), 0.5],
+		[Vector3(-0.3, 0.5, -5.9), 0.35],
+		[Vector3(1.8, -3.5, -4.5), 1.2],
 	]
 	for cd in crater_data:
 		var crater := MeshInstance3D.new()
@@ -322,6 +381,14 @@ func _create_moon() -> void:
 		crater.set_surface_override_material(0, crater_mat)
 		crater.position = MOON_POSITION + cd[0]
 		add_child(crater)
+
+	# Faint yellowish moonlight
+	var moon_light := OmniLight3D.new()
+	moon_light.light_color = Color(0.9, 0.88, 0.75)
+	moon_light.light_energy = 0.3
+	moon_light.omni_range = 220.0
+	moon_light.position = MOON_POSITION
+	add_child(moon_light)
 
 func _random_building_color() -> Color:
 	var palette := [
@@ -337,6 +404,34 @@ func _random_building_color() -> Color:
 		Color(0.42, 0.4, 0.45, 1),
 	]
 	return palette[randi() % palette.size()]
+
+func _create_stars() -> void:
+	var num_stars: int = 60
+	for i in range(num_stars):
+		var star := MeshInstance3D.new()
+		var s_mesh := SphereMesh.new()
+		var radius: float = randf_range(0.3, 0.8)
+		s_mesh.radius = radius
+		s_mesh.height = radius * 2.0
+		star.mesh = s_mesh
+
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 1.0, 1.0)
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 1.0, 0.95)
+		mat.emission_energy_multiplier = 1.0
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		star.set_surface_override_material(0, mat)
+
+		var theta: float = randf_range(0.0, TAU)
+		var dist: float = randf_range(80.0, 200.0)
+		var height: float = randf_range(15.0, 80.0)
+		star.position = Vector3(cos(theta) * dist, height, sin(theta) * dist - 100.0)
+
+		add_child(star)
+		_star_nodes.append(star)
+		_star_twinkle_speeds.append(randf_range(1.0, 3.0))
+		_star_twinkle_offsets.append(randf_range(0.0, TAU))
 
 func _spawn_obstacle() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -420,6 +515,7 @@ func _on_health_changed(new_health: int) -> void:
 	if new_health < prev_health:
 		play_damage_sound()
 		shake_camera(0.25, 0.2)
+		_flash_screen(Color(1.0, 0.0, 0.0))
 	if new_health <= 0:
 		truck.die()
 
