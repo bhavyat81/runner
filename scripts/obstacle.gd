@@ -42,6 +42,9 @@ func _build_car(color: Color) -> void:
 	body_mat.albedo_color = color
 	body_mat.roughness = 0.4
 	body_mat.metallic = 0.3
+	body_mat.emission_enabled = true
+	body_mat.emission = color
+	body_mat.emission_energy_multiplier = 0.5
 	mesh_instance.material_override = body_mat
 
 	# Car cabin/roof on top
@@ -53,6 +56,9 @@ func _build_car(color: Color) -> void:
 	roof_mat.albedo_color = color.darkened(0.2)
 	roof_mat.roughness = 0.4
 	roof_mat.metallic = 0.3
+	roof_mat.emission_enabled = true
+	roof_mat.emission = color.darkened(0.2)
+	roof_mat.emission_energy_multiplier = 0.3
 	roof.material_override = roof_mat
 	roof.position = Vector3(0.0, 1.1, 0.0)
 	add_child(roof)
@@ -98,6 +104,9 @@ func _build_barrier(color: Color) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.75, 0.73, 0.70, 1.0)
 	mat.roughness = 0.9
+	mat.emission_enabled = true
+	mat.emission = Color(0.6, 0.58, 0.55, 1.0)
+	mat.emission_energy_multiplier = 0.4
 	mesh_instance.material_override = mat
 
 	# Reflective stripe near the top
@@ -126,6 +135,9 @@ func _build_cone(color: Color) -> void:
 	var cone_mat := StandardMaterial3D.new()
 	cone_mat.albedo_color = Color(0.95, 0.4, 0.05, 1.0)
 	cone_mat.roughness = 0.7
+	cone_mat.emission_enabled = true
+	cone_mat.emission = Color(1.0, 0.4, 0.0, 1.0)
+	cone_mat.emission_energy_multiplier = 0.6
 	mesh_instance.material_override = cone_mat
 
 	# White reflective band around lower portion

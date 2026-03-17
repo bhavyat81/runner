@@ -5,7 +5,7 @@
 extends Area3D
 
 const LANE_X: Array[float] = [-3.0, 0.0, 3.0]
-const GARBAGE_BAG_COLOR := Color(0.08, 0.18, 0.08, 1.0)
+const GARBAGE_BAG_COLOR := Color(0.15, 0.55, 0.15, 1.0)
 
 # Proximity to truck (Z) at which the bag starts falling and tick mark appears
 const PROXIMITY_TRIGGER_Z: float = -15.0
@@ -81,6 +81,9 @@ func _build_garbage_bag() -> void:
 	bag_mat.albedo_color = GARBAGE_BAG_COLOR
 	bag_mat.roughness = 0.8
 	bag_mat.metallic = 0.0
+	bag_mat.emission_enabled = true
+	bag_mat.emission = Color(0.1, 0.4, 0.1, 1.0)
+	bag_mat.emission_energy_multiplier = 0.5
 
 	# Main bag body — slightly squashed sphere (full, bulging bag)
 	var body_sphere := SphereMesh.new()
@@ -129,9 +132,12 @@ func _build_piano() -> void:
 	garbage_bag.mesh = body_mesh
 
 	var body_mat := StandardMaterial3D.new()
-	body_mat.albedo_color = Color(0.05, 0.05, 0.05, 1.0)
+	body_mat.albedo_color = Color(0.12, 0.12, 0.15, 1.0)
 	body_mat.metallic = 0.5
 	body_mat.roughness = 0.2
+	body_mat.emission_enabled = true
+	body_mat.emission = Color(0.15, 0.15, 0.2, 1.0)
+	body_mat.emission_energy_multiplier = 0.6
 	garbage_bag.material_override = body_mat
 
 	# White keys strip along front
@@ -141,6 +147,9 @@ func _build_piano() -> void:
 	keys.mesh = keys_mesh
 	var keys_mat := StandardMaterial3D.new()
 	keys_mat.albedo_color = Color(0.95, 0.95, 0.92, 1.0)
+	keys_mat.emission_enabled = true
+	keys_mat.emission = Color(0.9, 0.9, 0.85, 1.0)
+	keys_mat.emission_energy_multiplier = 0.5
 	keys.material_override = keys_mat
 	keys.position = Vector3(0.0, 0.44, -0.6)
 	garbage_bag.add_child(keys)
@@ -166,8 +175,11 @@ func _build_tv() -> void:
 	garbage_bag.mesh = tv_mesh
 
 	var tv_mat := StandardMaterial3D.new()
-	tv_mat.albedo_color = Color(0.18, 0.17, 0.16, 1.0)
+	tv_mat.albedo_color = Color(0.25, 0.24, 0.23, 1.0)
 	tv_mat.roughness = 0.6
+	tv_mat.emission_enabled = true
+	tv_mat.emission = Color(0.2, 0.2, 0.2, 1.0)
+	tv_mat.emission_energy_multiplier = 0.4
 	garbage_bag.material_override = tv_mat
 
 	# Glowing blue screen
@@ -222,6 +234,9 @@ func _build_bed() -> void:
 	var mattress_mat := StandardMaterial3D.new()
 	mattress_mat.albedo_color = Color(0.82, 0.88, 0.98, 1.0)
 	mattress_mat.roughness = 0.9
+	mattress_mat.emission_enabled = true
+	mattress_mat.emission = Color(0.6, 0.65, 0.75, 1.0)
+	mattress_mat.emission_energy_multiplier = 0.4
 	garbage_bag.material_override = mattress_mat
 
 	# Headboard
@@ -232,6 +247,9 @@ func _build_bed() -> void:
 	var hb_mat := StandardMaterial3D.new()
 	hb_mat.albedo_color = Color(0.38, 0.22, 0.08, 1.0)
 	hb_mat.roughness = 0.7
+	hb_mat.emission_enabled = true
+	hb_mat.emission = Color(0.3, 0.18, 0.06, 1.0)
+	hb_mat.emission_energy_multiplier = 0.3
 	headboard.material_override = hb_mat
 	headboard.position = Vector3(0.0, 0.65, 1.1)
 	garbage_bag.add_child(headboard)
@@ -244,6 +262,9 @@ func _build_bed() -> void:
 	var pillow_mat := StandardMaterial3D.new()
 	pillow_mat.albedo_color = Color(1.0, 0.97, 0.90, 1.0)
 	pillow_mat.roughness = 0.95
+	pillow_mat.emission_enabled = true
+	pillow_mat.emission = Color(0.8, 0.78, 0.7, 1.0)
+	pillow_mat.emission_energy_multiplier = 0.3
 	pillow.material_override = pillow_mat
 	pillow.position = Vector3(0.0, 0.28, 0.82)
 	garbage_bag.add_child(pillow)
