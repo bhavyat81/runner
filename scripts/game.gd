@@ -217,7 +217,8 @@ func _process(delta: float) -> void:
 				child.queue_free()
 	if traffic_container:
 		for child in traffic_container.get_children():
-			var car_spd: float = spd * (1.0 + child.get("speed_offset", 0.0))
+			var speed_offset = child.get("speed_offset")
+			var car_spd: float = spd * (1.0 + (speed_offset if speed_offset != null else 0.0))
 			child.position.z += car_spd * delta
 			if child.position.z >= DESPAWN_Z or child.position.z <= SPAWN_Z * 2.0:
 				child.queue_free()
