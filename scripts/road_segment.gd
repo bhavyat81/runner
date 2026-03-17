@@ -22,7 +22,6 @@ const DASH_GAP: float = 3.0  # gap between dashes (dash + gap = one period)
 func _ready() -> void:
 	_build_road()
 	_build_dashed_lane_lines()
-	_build_center_line()
 	_build_edge_lines()
 	_build_curbs()
 	_build_footpaths()
@@ -60,22 +59,6 @@ func _build_dashed_lane_lines() -> void:
 			dash.position = Vector3(x, 0.06, z)
 			add_child(dash)
 			z += period
-
-# --- Solid yellow center line at X = 0 ---
-func _build_center_line() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.85, 0.0, 1.0)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.8, 0.0, 1.0)
-	mat.emission_energy_multiplier = 0.5
-
-	var line := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.18, 0.02, SEGMENT_LENGTH)
-	line.mesh = mesh
-	line.material_override = mat
-	line.position = Vector3(0.0, 0.06, 0.0)
-	add_child(line)
 
 # --- Solid white edge lines at X = ±4.5 ---
 func _build_edge_lines() -> void:
