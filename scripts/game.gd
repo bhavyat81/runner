@@ -32,6 +32,7 @@ const MARKER_SCENE := preload("res://scenes/garbage_marker.tscn")
 const SPEED_BOOST_SCENE := preload("res://scenes/speed_boost.tscn")
 const POWERUP_SCENE := preload("res://scenes/powerup.tscn")
 const TRAFFIC_CAR_SCENE := preload("res://scenes/traffic_car.tscn")
+const COIN_SCENE := preload("res://scenes/coin.tscn")
 
 const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
@@ -58,6 +59,8 @@ var boost_container: Node3D = null
 var powerup_container: Node3D = null
 var traffic_container: Node3D = null
 var flying_container: Node3D = null
+var coin_container: Node3D = null
+var _coin_timer: float = 8.0
 
 var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
@@ -82,6 +85,7 @@ var _combo_label: Label = null
 var _combo_tween: Tween = null
 var _powerup_hud_label: Label = null
 var _challenge_hud_label: Label = null
+var _coin_hud_label: Label = null
 var _toast_label: Label = null
 var _toast_tween: Tween = null
 var _phase_label: Label = null
@@ -162,6 +166,10 @@ func _ready() -> void:
 	flying_container = Node3D.new()
 	flying_container.name = "FlyingContainer"
 	add_child(flying_container)
+	coin_container = Node3D.new()
+	coin_container.name = "CoinContainer"
+	add_child(coin_container)
+	_setup_coin_hud()
 	health_bar.max_value = GameManager.MAX_HEALTH
 	health_bar.value = GameManager.health
 	_style_health_good.bg_color = Color(0.1, 0.8, 0.1)
@@ -231,6 +239,11 @@ func _process(delta: float) -> void:
 			child.position.z += car_spd * delta
 			if child.position.z >= DESPAWN_Z or child.position.z <= SPAWN_Z * 2.0:
 				child.queue_free()
+	if coin_container:
+		for child in coin_container.get_children():
+			child.position.z += spd * delta
+			if child.position.z >= DESPAWN_Z:
+				child.queue_free()
 	if truck and not truck.is_dead:
 		truck.invincible = GameManager.speed_boost_active or \
 			GameManager.active_powerup == GameManager.PowerupType.SHIELD
@@ -241,6 +254,12 @@ func _process(delta: float) -> void:
 			if dist3d < 15.0 and not child.get("collected"):
 				var dir3d: Vector3 = (truck_pos - child.global_position).normalized()
 				child.position += dir3d * 8.0 * delta
+		if coin_container:
+			for child in coin_container.get_children():
+				var dist3d: float = child.global_position.distance_to(truck_pos)
+				if dist3d < 15.0 and not child.get("_collected"):
+					var dir3d: Vector3 = (truck_pos - child.global_position).normalized()
+					child.position += dir3d * 10.0 * delta
 	_powerup_timer -= delta
 	if _powerup_timer <= 0.0:
 		_spawn_powerup()
@@ -254,6 +273,10 @@ func _process(delta: float) -> void:
 	if _fly_timer <= 0.0:
 		_spawn_flying_object()
 		_fly_timer = randf_range(10.0, 20.0)
+	_coin_timer -= delta
+	if _coin_timer <= 0.0:
+		_spawn_coin_line()
+		_coin_timer = randf_range(5.0, 12.0)
 	_weather_timer -= delta
 	if _weather_timer <= 0.0:
 		_pick_random_weather()
@@ -269,9 +292,12 @@ func _process(delta: float) -> void:
 	garbage_label.text = "Bags: %d" % GameManager.garbage_collected
 	distance_label.text = "%dm" % int(GameManager.distance)
 	health_label.text = "HP: %d" % GameManager.health
+	if _coin_hud_label:
+		_coin_hud_label.text = "🪙 %d" % GameManager.coins
 	_update_fov(delta)
 	_update_powerup_hud()
 	_update_pre_power_hud()
+	_update_challenge_hud_labels()
 	if shake_duration > 0.0:
 		shake_duration -= delta
 		if shake_duration <= 0.0:
@@ -684,7 +710,7 @@ func _on_pre_game_power_expired() -> void:
 		GameManager.PreGamePower.GHOST_MODE:
 			_fade_ghost_mode_out()
 		GameManager.PreGamePower.HEADSTART:
-			# FOV returns to normal naturally via _update_fov
+			pass  # FOV returns to normal naturally via _update_fov
 
 func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
 	match env:
@@ -1153,6 +1179,33 @@ func _spawn_traffic_car() -> void:
 	car.position.z = SPAWN_Z
 	car.position.y = 0.0
 	car.setup(randi() % 3, randf() < 0.4)
+
+func _setup_coin_hud() -> void:
+	var coin_layer := CanvasLayer.new()
+	coin_layer.layer = 7
+	add_child(coin_layer)
+	_coin_hud_label = Label.new()
+	_coin_hud_label.position = Vector2(16, 256)
+	_coin_hud_label.add_theme_font_size_override("font_size", 22)
+	_coin_hud_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.1))
+	_coin_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coin_layer.add_child(_coin_hud_label)
+
+func _spawn_coin_line() -> void:
+	if GameManager.current_state != GameManager.GameState.PLAYING:
+		return
+	if coin_container == null:
+		return
+	# Spawn a line of 3–6 coins in a random lane
+	var lane_xs: Array[float] = [-3.0, 0.0, 3.0]
+	var chosen_lane: int = randi() % 3
+	var x: float = lane_xs[chosen_lane]
+	var count: int = randi() % 4 + 3  # 3 to 6 coins
+	var spacing: float = 3.0
+	for i in range(count):
+		var coin: Area3D = COIN_SCENE.instantiate()
+		coin_container.add_child(coin)
+		coin.position = Vector3(x, 1.0, SPAWN_Z - i * spacing)
 
 func _on_truck_died() -> void:
 	play_death_sound()
