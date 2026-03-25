@@ -69,13 +69,13 @@ func _build_dashed_lane_lines() -> void:
 	for x: float in LANE_LINE_X:
 		var period := DASH_LENGTH + DASH_GAP
 		var z := -SEGMENT_LENGTH * 0.5 + DASH_LENGTH * 0.5 + DASH_GAP * 0.5
-		while z <= SEGMENT_LENGTH * 0.5:
+		while z <= SEGMENT_LENGTH * 0.5 - DASH_LENGTH * 0.5:
 			var dash := MeshInstance3D.new()
 			var mesh := BoxMesh.new()
 			mesh.size = Vector3(0.2, 0.02, DASH_LENGTH)
 			dash.mesh = mesh
 			dash.material_override = mat
-			dash.position = Vector3(x, 0.06, z)
+			dash.position = Vector3(x, 0.08, z)
 			add_child(dash)
 			z += period
 
@@ -92,7 +92,7 @@ func _build_edge_lines() -> void:
 		mesh.size = Vector3(0.22, 0.02, SEGMENT_LENGTH)
 		line.mesh = mesh
 		line.material_override = mat
-		line.position = Vector3(x, 0.06, 0.0)
+		line.position = Vector3(x, 0.08, 0.0)
 		add_child(line)
 
 func _build_curbs() -> void:
