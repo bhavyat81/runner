@@ -95,9 +95,9 @@ func _process(delta: float) -> void:
 		return
 	_bob_time += delta
 	rotation_degrees.y += SPIN_SPEED * delta
-	# Bob up and down
-	position.y = 1.0 + sin(_bob_time * 2.0) * 0.2
-	# Pulse glow (handled via emission on mat)
+	# Bob the mesh up and down independently of the Area3D position (which game.gd moves on z)
+	if _mesh_instance:
+		_mesh_instance.position.y = 1.0 + sin(_bob_time * 2.0) * 0.2
 
 func _on_body_entered(body: Node3D) -> void:
 	if _collected:

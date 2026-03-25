@@ -569,6 +569,7 @@ func _on_speed_boost_activated() -> void:
 	_flash_screen(Color(0.0, 0.4, 1.0))
 
 func _on_powerup_activated(type: GameManager.PowerupType) -> void:
+	_last_active_powerup = type
 	match type:
 		GameManager.PowerupType.SHIELD:
 			_flash_screen(Color(0.2, 0.5, 1.0))

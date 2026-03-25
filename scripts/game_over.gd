@@ -25,7 +25,7 @@ func _ready() -> void:
 func _setup_continue_button() -> void:
 	var vbox: VBoxContainer = $Panel/VBox
 	_continue_btn = Button.new()
-	_continue_btn.text = "Continue (💎 1)  [%d 💎 available]" % GameManager.diamonds
+	_continue_btn.text = "Continue (💎 1) [%d 💎 available]" % GameManager.diamonds
 	_continue_btn.custom_minimum_size = Vector2(0, 50)
 	_continue_btn.add_theme_font_size_override("font_size", 18)
 	var can_continue: bool = GameManager.diamonds >= 1 and not GameManager._continued_this_run
