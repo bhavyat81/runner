@@ -286,20 +286,9 @@ func update_game(delta: float) -> void:
 			power_timer = 0.0
 			pre_game_power_expired.emit()
 
-	# Update environment
-	var new_env: GameEnvironment = _get_environment_for_distance(distance)
-	if new_env != current_environment:
-		current_environment = new_env
-		environment_changed.emit(current_environment)
+	# Keep environment always set to CITY — no switching
+	current_environment = GameEnvironment.CITY
 
-func _get_environment_for_distance(d: float) -> GameEnvironment:
-	var cycle_pos: int = int(d / 400.0) % 4
-	match cycle_pos:
-		0: return GameEnvironment.CITY
-		1: return GameEnvironment.HIGHWAY
-		2: return GameEnvironment.BRIDGE
-		3: return GameEnvironment.TUNNEL
-	return GameEnvironment.CITY
 
 # --- XP / Level ---
 func _check_level_up() -> void:

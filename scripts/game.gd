@@ -95,10 +95,6 @@ var _ghost_tween: Tween = null
 const HEADSTART_FOV: float = 85.0
 const GHOST_MODE_ALPHA: float = 0.35
 
-# Environment phase elements
-var _bridge_left: Node3D = null
-var _bridge_right: Node3D = null
-var _tunnel_ceiling: Node3D = null
 var _moon_nodes: Array[Node3D] = []
 
 # Day/Night: int keys 0=Night 1=Dawn 2=Day 3=Dusk
@@ -131,7 +127,6 @@ func _ready() -> void:
 	GameManager.speed_boost_activated.connect(_on_speed_boost_activated)
 	GameManager.powerup_activated.connect(_on_powerup_activated)
 	GameManager.powerup_expired.connect(_on_powerup_expired)
-	GameManager.environment_changed.connect(_on_environment_changed)
 	GameManager.pre_game_power_expired.connect(_on_pre_game_power_expired)
 	var am := get_node_or_null("/root/AchievementManager")
 	if am:
@@ -145,7 +140,6 @@ func _ready() -> void:
 	_setup_powerup_hud()
 	_setup_challenge_hud()
 	_setup_phase_label()
-	_setup_environment_elements()
 	_setup_toast()
 	_setup_pre_power_hud()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
@@ -515,58 +509,6 @@ func _show_phase_announcement(text: String) -> void:
 	_phase_tween.tween_interval(2.0)
 	_phase_tween.tween_property(_phase_label, "modulate:a", 0.0, 0.6)
 
-func _setup_environment_elements() -> void:
-	# Bridge railings (hidden initially)
-	_bridge_left = _create_bridge_railing(-6.0)
-	_bridge_right = _create_bridge_railing(6.0)
-	_bridge_left.visible = false
-	_bridge_right.visible = false
-	# Tunnel ceiling with orange lights (hidden initially)
-	_tunnel_ceiling = _create_tunnel_ceiling()
-	_tunnel_ceiling.visible = false
-
-func _create_bridge_railing(x_pos: float) -> Node3D:
-	var railing := Node3D.new()
-	railing.name = "BridgeRailing"
-	add_child(railing)
-	var railing_mesh := BoxMesh.new()
-	railing_mesh.size = Vector3(0.5, 1.2, 220.0)
-	var mi := MeshInstance3D.new()
-	mi.mesh = railing_mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.75, 0.78, 0.85)
-	mat.roughness = 0.6
-	mi.material_override = mat
-	mi.position = Vector3(0.0, 0.6, -80.0)
-	railing.add_child(mi)
-	railing.position.x = x_pos
-	return railing
-
-func _create_tunnel_ceiling() -> Node3D:
-	var ceiling := Node3D.new()
-	ceiling.name = "TunnelCeiling"
-	ceiling.position.y = 8.0
-	add_child(ceiling)
-	# Main ceiling slab
-	var ceil_mesh := BoxMesh.new()
-	ceil_mesh.size = Vector3(18.0, 1.2, 220.0)
-	var ci := MeshInstance3D.new()
-	ci.mesh = ceil_mesh
-	var ceil_mat := StandardMaterial3D.new()
-	ceil_mat.albedo_color = Color(0.08, 0.08, 0.1)
-	ci.material_override = ceil_mat
-	ci.position = Vector3(0.0, 0.0, -80.0)
-	ceiling.add_child(ci)
-	# Orange tunnel lights along the ceiling
-	for zi in range(-70, 30, 15):  # span from spawn zone to despawn zone
-		var light := OmniLight3D.new()
-		light.light_color = Color(1.0, 0.55, 0.1)
-		light.light_energy = 2.5
-		light.omni_range = 18.0
-		light.position = Vector3(0.0, -1.0, float(zi))
-		ceiling.add_child(light)
-	return ceiling
-
 func _set_lighting(p_sun_color: Color, p_sun_energy: float,
 		p_ambient: Color, p_sky: Color) -> void:
 	if sun:
@@ -711,52 +653,6 @@ func _on_pre_game_power_expired() -> void:
 			_fade_ghost_mode_out()
 		GameManager.PreGamePower.HEADSTART:
 			pass  # FOV returns to normal naturally via _update_fov
-
-func _on_environment_changed(env: GameManager.GameEnvironment) -> void:
-	match env:
-		GameManager.GameEnvironment.CITY:
-			building_container.visible = true
-			_set_lighting(
-				Color(0.3, 0.35, 0.55), 0.2,
-				Color(0.15, 0.18, 0.35), Color(0.03, 0.03, 0.12))
-			if _bridge_left: _bridge_left.visible = false
-			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
-			_set_moon_stars_visible(true)
-			_show_phase_announcement("CITY")
-		GameManager.GameEnvironment.HIGHWAY:
-			building_container.visible = false
-			_set_lighting(
-				Color(1.0, 0.95, 0.85), 1.4,
-				Color(0.5, 0.55, 0.7), Color(0.2, 0.35, 0.6))
-			if _bridge_left: _bridge_left.visible = false
-			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
-			_set_moon_stars_visible(false)
-			_show_phase_announcement("HIGHWAY")
-		GameManager.GameEnvironment.BRIDGE:
-			building_container.visible = false
-			_set_lighting(
-				Color(0.7, 0.85, 1.0), 0.9,
-				Color(0.3, 0.4, 0.6), Color(0.1, 0.2, 0.4))
-			if _bridge_left: _bridge_left.visible = true
-			if _bridge_right: _bridge_right.visible = true
-			if _tunnel_ceiling: _tunnel_ceiling.visible = false
-			_set_moon_stars_visible(false)
-			_show_phase_announcement("BRIDGE")
-		GameManager.GameEnvironment.TUNNEL:
-			building_container.visible = false
-			_set_lighting(
-				Color(0.4, 0.3, 0.2), 0.1,
-				Color(0.1, 0.1, 0.1), Color(0.02, 0.02, 0.02))
-			if _bridge_left: _bridge_left.visible = false
-			if _bridge_right: _bridge_right.visible = false
-			if _tunnel_ceiling: _tunnel_ceiling.visible = true
-			_set_moon_stars_visible(false)
-			_show_phase_announcement("TUNNEL")
-	for seg in road_segments:
-		if seg.has_method("apply_environment"):
-			seg.apply_environment(env)
 
 func _on_achievement_unlocked(_id: String, title: String) -> void:
 	_show_toast(title)
@@ -911,10 +807,38 @@ func _create_stars() -> void:
 		_star_twinkle_speeds.append(randf_range(1.0, 3.0))
 		_star_twinkle_offsets.append(randf_range(0.0, TAU))
 
+	# Add a cluster of smaller, brighter stars near the moon for a constellation effect
+	for _i in range(18):
+		var star := MeshInstance3D.new()
+		var s_mesh := SphereMesh.new()
+		var radius: float = randf_range(0.15, 0.4)
+		s_mesh.radius = radius
+		s_mesh.height = radius * 2.0
+		star.mesh = s_mesh
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 1.0, 1.0)
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.98, 0.85)
+		mat.emission_energy_multiplier = 2.5
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		star.set_surface_override_material(0, mat)
+		# Scatter within ~15-20 units around the moon (box distribution)
+		var offset := Vector3(
+			randf_range(-20.0, 20.0),
+			randf_range(-15.0, 15.0),
+			randf_range(-15.0, 15.0)
+		)
+		# Ensure minimum distance from moon centre so they don't overlap the moon disc
+		if offset.length() < 8.0:
+			offset = offset.normalized() * randf_range(8.0, 20.0)
+		star.position = MOON_POSITION + offset
+		add_child(star)
+		_star_nodes.append(star)
+		_star_twinkle_speeds.append(randf_range(2.0, 5.0))
+		_star_twinkle_offsets.append(randf_range(0.0, TAU))
+
 func _update_day_night() -> void:
-	# Only animate day/night cycle in CITY — other environments set their own lighting
-	if GameManager.current_environment != GameManager.GameEnvironment.CITY:
-		return
+	# City is the only environment — always run the day/night cycle
 	var cycle_pos: float = fmod(GameManager.distance, 1200.0)
 	var phase_f: float = cycle_pos / 300.0
 	var phase_int: int = int(phase_f) % 4
