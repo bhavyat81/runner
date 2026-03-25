@@ -822,7 +822,7 @@ func _create_stars() -> void:
 		mat.emission_energy_multiplier = 2.5
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		star.set_surface_override_material(0, mat)
-		# Scatter within a 15-25 unit sphere around the moon
+		# Scatter within ~15-20 units around the moon (box distribution)
 		var offset := Vector3(
 			randf_range(-20.0, 20.0),
 			randf_range(-15.0, 15.0),

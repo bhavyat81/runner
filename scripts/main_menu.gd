@@ -38,7 +38,7 @@ func _setup_powers_ui() -> void:
 	vbox.add_theme_constant_override("separation", 12)
 
 	var sep := HSeparator.new()
-	sep.custom_minimum_size = Vector2(0, 8)
+	sep.custom_minimum_size = Vector2(0, 12)
 	vbox.add_child(sep)
 
 	var powers_title := Label.new()

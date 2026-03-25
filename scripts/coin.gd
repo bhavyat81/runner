@@ -48,10 +48,9 @@ func _build_mesh() -> void:
 	label.position = Vector3(0.0, 0.0, 0.1)
 	add_child(label)
 
-	# Collision shape matching the standing disc
-	var shape := CylinderShape3D.new()
-	shape.radius = 0.55
-	shape.height = 0.4
+	# Collision shape: sphere to reliably catch the truck regardless of disc orientation
+	var shape := SphereShape3D.new()
+	shape.radius = 0.65
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
 	add_child(cs)
