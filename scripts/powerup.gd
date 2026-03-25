@@ -17,6 +17,7 @@ const TYPE_COLORS: Dictionary = {
 	GameManager.PowerupType.MAGNET:        Color(1.0, 0.2, 0.6),
 	GameManager.PowerupType.SLOW_MO:       Color(0.3, 0.9, 0.9),
 	GameManager.PowerupType.DOUBLE_POINTS: Color(1.0, 0.85, 0.0),
+	GameManager.PowerupType.GHOST:         Color(0.55, 0.2, 1.0),
 }
 
 func _ready() -> void:
@@ -101,6 +102,31 @@ func _build_visual() -> void:
 				box_node.position = Vector3(0.0, 1.0, 0.0)
 				box_node.rotation_degrees.y = angle
 				add_child(box_node)
+		GameManager.PowerupType.GHOST:
+			# Ghost: translucent outer sphere shell + ghost-face label
+			var ghost_mat := StandardMaterial3D.new()
+			ghost_mat.albedo_color = Color(0.55, 0.2, 1.0, 0.35)
+			ghost_mat.emission_enabled = true
+			ghost_mat.emission = Color(0.4, 0.9, 1.0)
+			ghost_mat.emission_energy_multiplier = 3.0
+			ghost_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			var outer_sphere_mesh := SphereMesh.new()
+			outer_sphere_mesh.radius = 0.72
+			outer_sphere_mesh.height = 1.44
+			var outer_sphere := MeshInstance3D.new()
+			outer_sphere.mesh = outer_sphere_mesh
+			outer_sphere.material_override = ghost_mat
+			outer_sphere.position.y = 1.0
+			add_child(outer_sphere)
+			var ghost_label := Label3D.new()
+			ghost_label.text = "👻"
+			ghost_label.font_size = 64
+			ghost_label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+			ghost_label.no_depth_test = true
+			ghost_label.pixel_size = 0.006
+			ghost_label.position = Vector3(0.0, 1.0, 0.0)
+			add_child(ghost_label)
 
 	# Glow disc on ground
 	var glow_mesh := CylinderMesh.new()

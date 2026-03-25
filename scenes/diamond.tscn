@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://diamond3d"]
+
+[ext_resource type="Script" path="res://scripts/diamond.gd" id="1_diamond"]
+
+[node name="Diamond" type="Area3D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_diamond")

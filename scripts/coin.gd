@@ -4,7 +4,6 @@
 extends Area3D
 
 const SPIN_SPEED: float = 270.0  # degrees per second
-const COIN_FRENZY_MULTIPLIER: int = 3
 const COLLECT_EFFECT_SCENE := preload("res://scenes/collect_effect.tscn")
 var _collected: bool = false
 var _mesh_instance: MeshInstance3D = null
@@ -66,9 +65,8 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 	if body.is_in_group("truck"):
 		_collected = true
-		# Award coin
-		var coin_gain: int = COIN_FRENZY_MULTIPLIER if (GameManager.power_active and GameManager.selected_power == GameManager.PreGamePower.COIN_FRENZY) else 1
-		GameManager.coins += coin_gain
+		# Award 1 coin
+		GameManager.coins += 1
 		# Spawn collect effect
 		if COLLECT_EFFECT_SCENE:
 			var effect: Node3D = COLLECT_EFFECT_SCENE.instantiate()
