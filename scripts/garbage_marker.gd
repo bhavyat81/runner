@@ -168,6 +168,9 @@ func _build_piano() -> void:
 		leg.position = lp + Vector3(0.0, -0.8, 0.0)
 		garbage_bag.add_child(leg)
 
+	# Rotate so the keys face the player (toward positive Z / camera)
+	garbage_bag.rotation_degrees.y = 180.0
+
 func _build_tv() -> void:
 	# CRT television body
 	var tv_mesh := BoxMesh.new()
@@ -225,6 +228,9 @@ func _build_tv() -> void:
 		leg.position = Vector3(lx, -0.86, 0.1)
 		garbage_bag.add_child(leg)
 
+	# Rotate so the screen faces the player (toward positive Z / camera)
+	garbage_bag.rotation_degrees.y = 180.0
+
 func _build_bed() -> void:
 	# Mattress
 	var mattress_mesh := BoxMesh.new()
@@ -280,6 +286,9 @@ func _build_bed() -> void:
 		leg.material_override = leg_mat
 		leg.position = lp + Vector3(0.0, -0.38, 0.0)
 		garbage_bag.add_child(leg)
+
+	# Rotate so the headboard faces the player (toward positive Z / camera)
+	garbage_bag.rotation_degrees.y = 180.0
 
 func _build_tick_mark() -> void:
 	tick_label = Label3D.new()

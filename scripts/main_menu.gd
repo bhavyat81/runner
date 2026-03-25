@@ -2,8 +2,8 @@
 # Main menu scene controller for Garbage Rush.
 extends Control
 
-@onready var play_button: Button = $VBoxContainer/PlayButton
-@onready var high_score_label: Label = $VBoxContainer/HighScoreLabel
+@onready var play_button: Button = $MenuScroll/VBoxContainer/PlayButton
+@onready var high_score_label: Label = $MenuScroll/VBoxContainer/HighScoreLabel
 
 # Pre-game power selection state
 var _selected_power: int = GameManager.PreGamePower.NONE
@@ -33,9 +33,12 @@ func _setup_title_anim() -> void:
 
 func _setup_powers_ui() -> void:
 	# Append power selection UI below existing VBoxContainer children
-	var vbox: VBoxContainer = $VBoxContainer
+	var vbox: VBoxContainer = $MenuScroll/VBoxContainer
+	# Give the VBoxContainer breathing room between items
+	vbox.add_theme_constant_override("separation", 12)
 
 	var sep := HSeparator.new()
+	sep.custom_minimum_size = Vector2(0, 8)
 	vbox.add_child(sep)
 
 	var powers_title := Label.new()
@@ -75,12 +78,18 @@ func _setup_powers_ui() -> void:
 	for entry in power_data:
 		var btn := Button.new()
 		btn.text = "%s\n%s" % [entry["label"], entry["desc"]]
-		btn.custom_minimum_size = Vector2(0, 56)
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.custom_minimum_size = Vector2(0, 60)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.add_theme_font_size_override("font_size", 15)
 		var pw: int = entry["power"]
 		btn.pressed.connect(func(): _select_power(pw))
 		vbox.add_child(btn)
 		_power_buttons.append(btn)
+
+	# Bottom padding so the last button isn't flush against the screen edge
+	var bottom_pad := Control.new()
+	bottom_pad.custom_minimum_size = Vector2(0, 20)
+	vbox.add_child(bottom_pad)
 
 	# Default selection
 	_select_power(GameManager.PreGamePower.NONE)
