@@ -59,7 +59,7 @@ func _build_mesh() -> void:
 	if scene == null:
 		push_warning("Truck: failed to load model: " + model_path)
 		return
-	var model := scene.instantiate()
+	var model = scene.instantiate()
 	# Kenney models face +Z; rotate 180° so the truck faces -Z (forward/toward camera)
 	model.rotation_degrees.y = 180.0
 	# Monster truck skin gets a slightly larger scale for presence

@@ -37,7 +37,7 @@ func _build_car(_is_fast: bool) -> void:
 	if scene == null:
 		push_warning("TrafficCar: failed to load model: " + model_path)
 	else:
-		var model := scene.instantiate()
+		var model = scene.instantiate()
 		# Kenney models face +Z; rotate 180° so cars face the same direction as the player
 		model.rotation_degrees.y = 180.0
 		model.scale = Vector3(1.5, 1.5, 1.5)
