@@ -4,6 +4,16 @@ extends Area3D
 
 const LANE_X: Array[float] = [-3.0, 0.0, 3.0]
 
+# Random traffic car models from the Kenney Car Kit
+const CAR_MODELS: Array[String] = [
+	"res://assets/models/sedan.glb",
+	"res://assets/models/suv.glb",
+	"res://assets/models/taxi.glb",
+	"res://assets/models/hatchback-sports.glb",
+	"res://assets/models/police.glb",
+	"res://assets/models/van.glb",
+]
+
 var speed_offset: float = 0.0  # relative to player speed (negative = same dir slower, positive = ahead faster)
 var collected: bool = false
 
@@ -21,87 +31,23 @@ func setup(lane: int, is_fast: bool) -> void:
 	speed_offset = 0.3 if is_fast else -0.4  # fraction of current_speed added per frame
 	_build_car(is_fast)
 
-func _build_car(is_fast: bool) -> void:
-	var variant := randi() % 3  # 0=sedan, 1=suv, 2=van
-	var car_color := Color(randf_range(0.2, 1.0), randf_range(0.2, 1.0), randf_range(0.2, 1.0))
+func _build_car(_is_fast: bool) -> void:
+	var model_path: String = CAR_MODELS[randi() % CAR_MODELS.size()]
+	var scene = load(model_path)
+	if scene == null:
+		push_warning("TrafficCar: failed to load model: " + model_path)
+	else:
+		var model := scene.instantiate()
+		# Kenney models face +Z; rotate 180° so cars face the same direction as the player
+		model.rotation_degrees.y = 180.0
+		model.scale = Vector3(1.5, 1.5, 1.5)
+		add_child(model)
 
-	var body_mat := StandardMaterial3D.new()
-	body_mat.albedo_color = car_color
-	body_mat.roughness = 0.4
-	body_mat.metallic = 0.3
-
-	# Body dimensions per variant
-	var body_size: Vector3
-	var body_y: float
-	match variant:
-		0:  # Sedan
-			body_size = Vector3(2.0, 0.7, 3.6)
-			body_y = 0.55
-		1:  # SUV
-			body_size = Vector3(2.1, 1.0, 3.8)
-			body_y = 0.7
-		2:  # Van
-			body_size = Vector3(2.0, 1.3, 5.0)
-			body_y = 0.85
-	var body_mesh := BoxMesh.new()
-	body_mesh.size = body_size
-	var body_node := MeshInstance3D.new()
-	body_node.mesh = body_mesh
-	body_node.material_override = body_mat
-	body_node.position.y = body_y
-	add_child(body_node)
-
-	# Cabin (slightly smaller on top for sedan/suv)
-	if variant < 2:
-		var cab_mesh := BoxMesh.new()
-		cab_mesh.size = Vector3(body_size.x - 0.3, body_size.y * 0.7, body_size.z * 0.55)
-		var cab := MeshInstance3D.new()
-		cab.mesh = cab_mesh
-		var cab_mat := StandardMaterial3D.new()
-		cab_mat.albedo_color = car_color.darkened(0.2)
-		cab_mat.roughness = 0.4
-		cab_mat.metallic = 0.3
-		cab.material_override = cab_mat
-		cab.position = Vector3(0.0, body_y + body_size.y * 0.85, 0.0)
-		add_child(cab)
-
-	# Headlights (emissive white on front — negative Z is forward toward camera)
-	var head_mat := StandardMaterial3D.new()
-	head_mat.albedo_color = Color(1.0, 1.0, 0.9)
-	head_mat.emission_enabled = true
-	head_mat.emission = Color(1.0, 1.0, 0.85)
-	head_mat.emission_energy_multiplier = 3.0
-	head_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	for hx in [-0.6, 0.6]:
-		var h_mesh := BoxMesh.new()
-		h_mesh.size = Vector3(0.3, 0.2, 0.08)
-		var h := MeshInstance3D.new()
-		h.mesh = h_mesh
-		h.material_override = head_mat
-		h.position = Vector3(hx, body_y, -body_size.z * 0.5 - 0.04)
-		add_child(h)
-
-	# Taillights (red emissive on rear — positive Z)
-	var tail_mat := StandardMaterial3D.new()
-	tail_mat.albedo_color = Color(1.0, 0.05, 0.05)
-	tail_mat.emission_enabled = true
-	tail_mat.emission = Color(1.0, 0.0, 0.0)
-	tail_mat.emission_energy_multiplier = 2.5
-	tail_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	for tx in [-0.6, 0.6]:
-		var t_mesh := BoxMesh.new()
-		t_mesh.size = Vector3(0.3, 0.2, 0.08)
-		var t := MeshInstance3D.new()
-		t.mesh = t_mesh
-		t.material_override = tail_mat
-		t.position = Vector3(tx, body_y, body_size.z * 0.5 + 0.04)
-		add_child(t)
-
-	# Collision shape
+	# Collision shape sized to fit scaled Kenney car models
 	var shape := BoxShape3D.new()
-	shape.size = body_size + Vector3(0.1, 0.4, 0.1)
+	shape.size = Vector3(2.0, 1.2, 3.8)
 	collision_shape.shape = shape
-	collision_shape.position.y = body_y
+	collision_shape.position.y = 0.6
 
 func _on_body_entered(body: Node3D) -> void:
 	if body.is_in_group("truck") and not collected:
