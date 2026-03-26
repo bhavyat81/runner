@@ -175,10 +175,12 @@ func set_invincible(value: bool) -> void:
 func die() -> void:
 	if is_dead or invincible:
 		return
-	# Ghost Mode: truck passes through obstacles without dying
-	if GameManager.power_active and GameManager.selected_power == GameManager.PreGamePower.GHOST_MODE:
-		return
 	is_dead = true
 	rotation.z = 0.0
 	died.emit()
+
+func revive() -> void:
+	is_dead = false
+	velocity = Vector3.ZERO
+	rotation = Vector3.ZERO
 

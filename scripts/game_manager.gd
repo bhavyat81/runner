@@ -4,9 +4,8 @@
 extends Node
 
 enum GameState { MENU, PLAYING, PAUSED, GAME_OVER }
-enum PowerupType { NONE, SHIELD, MAGNET, SLOW_MO, DOUBLE_POINTS }
+enum PowerupType { NONE, SHIELD, MAGNET, SLOW_MO, DOUBLE_POINTS, GHOST }
 enum GameEnvironment { CITY, HIGHWAY, BRIDGE, TUNNEL }
-enum PreGamePower { NONE, GHOST_MODE, COIN_FRENZY, HEADSTART }
 
 signal score_changed(new_score: int)
 signal game_state_changed(new_state: GameState)
@@ -19,7 +18,7 @@ signal powerup_expired
 signal level_up(new_level: int)
 signal daily_challenge_completed(index: int)
 signal environment_changed(env: GameEnvironment)
-signal pre_game_power_expired
+signal diamond_collected_signal
 
 var current_state: GameState = GameState.MENU
 var score: int = 0
@@ -58,22 +57,14 @@ const POWERUP_DURATIONS: Dictionary = {
 	PowerupType.MAGNET: 8.0,
 	PowerupType.SLOW_MO: 3.0,
 	PowerupType.DOUBLE_POINTS: 10.0,
+	PowerupType.GHOST: 5.0,
 }
 
 # Day/Night cycle: environment
 var current_environment: GameEnvironment = GameEnvironment.CITY
 
-# Pre-game power system
-var selected_power: PreGamePower = PreGamePower.NONE
-var power_active: bool = false
-var power_timer: float = 0.0
-const PRE_POWER_DURATIONS: Dictionary = {
-	PreGamePower.GHOST_MODE: 8.0,
-	PreGamePower.COIN_FRENZY: 15.0,
-	PreGamePower.HEADSTART: 5.0,
-}
-
 var coins: int = 0
+var diamonds: int = 0
 var total_bags_lifetime: int = 0
 var selected_skin: int = 0
 var unlocked_skins: Array[bool] = [true, false, false, false, false]
@@ -108,6 +99,10 @@ var _run_dist_no_boost: float = 0.0
 var _boost_used_this_run: bool = false
 var _bags_today: int = 0
 
+# Continue-on-death system
+var _continued_this_run: bool = false
+var revival_invincibility_timer: float = 0.0
+
 func _ready() -> void:
 	_load_save_data()
 	_load_leaderboard()
@@ -132,15 +127,8 @@ func start_game() -> void:
 	_run_bags = 0
 	_run_dist_no_boost = 0.0
 	_boost_used_this_run = false
-	# Activate pre-game power
-	if selected_power != PreGamePower.NONE:
-		power_active = true
-		power_timer = PRE_POWER_DURATIONS.get(selected_power, 0.0)
-		if selected_power == PreGamePower.HEADSTART:
-			current_speed = BASE_SPEED * 2.0
-	else:
-		power_active = false
-		power_timer = 0.0
+	_continued_this_run = false
+	revival_invincibility_timer = 0.0
 	current_state = GameState.PLAYING
 	game_state_changed.emit(current_state)
 	get_tree().change_scene_to_file("res://scenes/game.tscn")
@@ -165,6 +153,20 @@ func go_to_main_menu() -> void:
 	current_state = GameState.MENU
 	game_state_changed.emit(current_state)
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+func continue_with_diamond() -> bool:
+	if diamonds < 1 or _continued_this_run:
+		return false
+	diamonds -= 1
+	_continued_this_run = true
+	health = MAX_HEALTH
+	active_powerup = PowerupType.NONE
+	powerup_timer = 0.0
+	revival_invincibility_timer = 3.0
+	current_state = GameState.PLAYING
+	_save_save_data()
+	game_state_changed.emit(current_state)
+	return true
 
 func pause_game() -> void:
 	if current_state == GameState.PLAYING:
@@ -193,9 +195,8 @@ func collect_garbage() -> void:
 		max_combo = combo
 	_update_combo_multiplier()
 	combo_changed.emit(combo, combo_multiplier)
-	# COIN_FRENZY: 3x coins for the first 15 seconds
-	var coin_gain: int = 3 if (power_active and selected_power == PreGamePower.COIN_FRENZY) else 1
-	coins += coin_gain
+	# Award coin on garbage collection
+	coins += 1
 	add_score(int(10 * combo_multiplier))
 	garbage_collected_signal.emit()
 	# Check daily challenge progress for combo
@@ -219,11 +220,10 @@ func _update_combo_multiplier() -> void:
 		combo_multiplier = 1.0
 
 func damage_health(amount: int) -> void:
-	if speed_boost_active or active_powerup == PowerupType.SHIELD:
-		return  # Invincible during boost or shield
-	# Pre-game power invincibility
-	if power_active and selected_power in [PreGamePower.GHOST_MODE, PreGamePower.HEADSTART]:
-		return
+	if speed_boost_active or active_powerup == PowerupType.SHIELD or active_powerup == PowerupType.GHOST:
+		return  # Invincible during boost, shield, or ghost
+	if revival_invincibility_timer > 0.0:
+		return  # Post-revival invincibility
 	health = max(0, health - amount)
 	health_changed.emit(health)
 	break_combo()
@@ -278,13 +278,11 @@ func update_game(delta: float) -> void:
 	if not _boost_used_this_run:
 		_run_dist_no_boost = distance
 
-	# Update pre-game power countdown
-	if power_active:
-		power_timer -= delta
-		if power_timer <= 0.0:
-			power_active = false
-			power_timer = 0.0
-			pre_game_power_expired.emit()
+	# Count down revival invincibility
+	if revival_invincibility_timer > 0.0:
+		revival_invincibility_timer -= delta
+		if revival_invincibility_timer < 0.0:
+			revival_invincibility_timer = 0.0
 
 	# Keep environment always set to CITY — no switching
 	current_environment = GameEnvironment.CITY
@@ -384,6 +382,7 @@ func _save_save_data() -> void:
 	var data: Dictionary = {
 		"high_score": high_score,
 		"coins": coins,
+		"diamonds": diamonds,
 		"total_bags_lifetime": total_bags_lifetime,
 		"selected_skin": selected_skin,
 		"unlocked_skins": unlocked_skins,
@@ -412,6 +411,7 @@ func _load_save_data() -> void:
 	var d: Dictionary = json.data
 	high_score = int(d.get("high_score", 0))
 	coins = int(d.get("coins", 0))
+	diamonds = int(d.get("diamonds", 0))
 	total_bags_lifetime = int(d.get("total_bags_lifetime", 0))
 	selected_skin = int(d.get("selected_skin", 0))
 	var us = d.get("unlocked_skins", [true, false, false, false, false])

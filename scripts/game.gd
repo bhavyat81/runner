@@ -33,6 +33,7 @@ const SPEED_BOOST_SCENE := preload("res://scenes/speed_boost.tscn")
 const POWERUP_SCENE := preload("res://scenes/powerup.tscn")
 const TRAFFIC_CAR_SCENE := preload("res://scenes/traffic_car.tscn")
 const COIN_SCENE := preload("res://scenes/coin.tscn")
+const DIAMOND_SCENE := preload("res://scenes/diamond.tscn")
 
 const SEGMENT_LENGTH: float = 40.0
 const NUM_SEGMENTS: int = 8
@@ -60,7 +61,9 @@ var powerup_container: Node3D = null
 var traffic_container: Node3D = null
 var flying_container: Node3D = null
 var coin_container: Node3D = null
+var diamond_container: Node3D = null
 var _coin_timer: float = 8.0
+var _diamond_timer: float = 35.0
 
 var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
@@ -86,13 +89,13 @@ var _combo_tween: Tween = null
 var _powerup_hud_label: Label = null
 var _challenge_hud_label: Label = null
 var _coin_hud_label: Label = null
+var _diamond_hud_label: Label = null
 var _toast_label: Label = null
 var _toast_tween: Tween = null
 var _phase_label: Label = null
 var _phase_tween: Tween = null
-var _pre_power_hud_label: Label = null
 var _ghost_tween: Tween = null
-const HEADSTART_FOV: float = 85.0
+var _last_active_powerup: GameManager.PowerupType = GameManager.PowerupType.NONE
 const GHOST_MODE_ALPHA: float = 0.35
 
 var _moon_nodes: Array[Node3D] = []
@@ -127,7 +130,6 @@ func _ready() -> void:
 	GameManager.speed_boost_activated.connect(_on_speed_boost_activated)
 	GameManager.powerup_activated.connect(_on_powerup_activated)
 	GameManager.powerup_expired.connect(_on_powerup_expired)
-	GameManager.pre_game_power_expired.connect(_on_pre_game_power_expired)
 	var am := get_node_or_null("/root/AchievementManager")
 	if am:
 		am.achievement_unlocked.connect(_on_achievement_unlocked)
@@ -141,7 +143,6 @@ func _ready() -> void:
 	_setup_challenge_hud()
 	_setup_phase_label()
 	_setup_toast()
-	_setup_pre_power_hud()
 	obstacle_timer.timeout.connect(_spawn_obstacle)
 	garbage_timer.timeout.connect(_spawn_garbage_marker)
 	boost_timer.timeout.connect(_spawn_speed_boost)
@@ -163,7 +164,11 @@ func _ready() -> void:
 	coin_container = Node3D.new()
 	coin_container.name = "CoinContainer"
 	add_child(coin_container)
+	diamond_container = Node3D.new()
+	diamond_container.name = "DiamondContainer"
+	add_child(diamond_container)
 	_setup_coin_hud()
+	_setup_diamond_hud()
 	health_bar.max_value = GameManager.MAX_HEALTH
 	health_bar.value = GameManager.health
 	_style_health_good.bg_color = Color(0.1, 0.8, 0.1)
@@ -178,8 +183,6 @@ func _ready() -> void:
 		pause_menu_instance = pause_menu_scene.instantiate()
 		$HUD.add_child(pause_menu_instance)
 		pause_menu_instance.hide()
-	# Activate visual effects for pre-game power
-	_activate_pre_game_power_visuals()
 
 func _process(delta: float) -> void:
 	if GameManager.current_state == GameManager.GameState.PAUSED:
@@ -238,9 +241,16 @@ func _process(delta: float) -> void:
 			child.position.z += spd * delta
 			if child.position.z >= DESPAWN_Z:
 				child.queue_free()
+	if diamond_container:
+		for child in diamond_container.get_children():
+			child.position.z += spd * delta
+			if child.position.z >= DESPAWN_Z:
+				child.queue_free()
 	if truck and not truck.is_dead:
 		truck.invincible = GameManager.speed_boost_active or \
-			GameManager.active_powerup == GameManager.PowerupType.SHIELD
+			GameManager.active_powerup == GameManager.PowerupType.SHIELD or \
+			GameManager.active_powerup == GameManager.PowerupType.GHOST or \
+			GameManager.revival_invincibility_timer > 0.0
 	if GameManager.active_powerup == GameManager.PowerupType.MAGNET:
 		var truck_pos: Vector3 = truck.global_position
 		for child in marker_container.get_children():
@@ -271,6 +281,10 @@ func _process(delta: float) -> void:
 	if _coin_timer <= 0.0:
 		_spawn_coin_line()
 		_coin_timer = randf_range(5.0, 12.0)
+	_diamond_timer -= delta
+	if _diamond_timer <= 0.0:
+		_spawn_diamond()
+		_diamond_timer = randf_range(30.0, 50.0)
 	_weather_timer -= delta
 	if _weather_timer <= 0.0:
 		_pick_random_weather()
@@ -288,9 +302,10 @@ func _process(delta: float) -> void:
 	health_label.text = "HP: %d" % GameManager.health
 	if _coin_hud_label:
 		_coin_hud_label.text = "🪙 %d" % GameManager.coins
+	if _diamond_hud_label:
+		_diamond_hud_label.text = "💎 %d" % GameManager.diamonds
 	_update_fov(delta)
 	_update_powerup_hud()
-	_update_pre_power_hud()
 	_update_challenge_hud_labels()
 	if shake_duration > 0.0:
 		shake_duration -= delta
@@ -348,9 +363,6 @@ func _update_fov(delta: float) -> void:
 		(GameManager.MAX_SPEED - GameManager.BASE_SPEED), 0.0, 1.0)
 	var boost_bonus: float = 10.0 if GameManager.speed_boost_active else 0.0
 	var target_fov: float = BASE_FOV + speed_ratio * (MAX_FOV - BASE_FOV) + boost_bonus
-	# Headstart power: extra-wide FOV for motion-blur feel
-	if GameManager.power_active and GameManager.selected_power == GameManager.PreGamePower.HEADSTART:
-		target_fov = HEADSTART_FOV
 	if not truck.is_dead:
 		camera.fov = lerpf(camera.fov, target_fov, 4.0 * delta)
 
@@ -430,34 +442,10 @@ func _update_powerup_hud() -> void:
 		GameManager.PowerupType.MAGNET: "MAGNET",
 		GameManager.PowerupType.SLOW_MO: "SLOW-MO",
 		GameManager.PowerupType.DOUBLE_POINTS: "2X POINTS",
+		GameManager.PowerupType.GHOST: "👻 GHOST",
 	}
 	var name_str: String = pu_names.get(GameManager.active_powerup, "POWERUP")
 	_powerup_hud_label.text = "[%s] %.1fs" % [name_str, GameManager.powerup_timer]
-
-func _setup_pre_power_hud() -> void:
-	var pp_layer := CanvasLayer.new()
-	pp_layer.layer = 7
-	add_child(pp_layer)
-	_pre_power_hud_label = Label.new()
-	_pre_power_hud_label.position = Vector2(16, 228)
-	_pre_power_hud_label.add_theme_font_size_override("font_size", 22)
-	_pre_power_hud_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
-	_pre_power_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pp_layer.add_child(_pre_power_hud_label)
-
-func _update_pre_power_hud() -> void:
-	if _pre_power_hud_label == null:
-		return
-	if not GameManager.power_active:
-		_pre_power_hud_label.text = ""
-		return
-	var power_names: Dictionary = {
-		GameManager.PreGamePower.GHOST_MODE: "👻 GHOST",
-		GameManager.PreGamePower.COIN_FRENZY: "💰 COIN FRENZY",
-		GameManager.PreGamePower.HEADSTART: "🚀 HEADSTART",
-	}
-	var pname: String = power_names.get(GameManager.selected_power, "POWER")
-	_pre_power_hud_label.text = "[%s] %.1fs" % [pname, GameManager.power_timer]
 
 func _setup_challenge_hud() -> void:
 	var ch_layer := CanvasLayer.new()
@@ -581,6 +569,7 @@ func _on_speed_boost_activated() -> void:
 	_flash_screen(Color(0.0, 0.4, 1.0))
 
 func _on_powerup_activated(type: GameManager.PowerupType) -> void:
+	_last_active_powerup = type
 	match type:
 		GameManager.PowerupType.SHIELD:
 			_flash_screen(Color(0.2, 0.5, 1.0))
@@ -590,18 +579,14 @@ func _on_powerup_activated(type: GameManager.PowerupType) -> void:
 			_flash_screen(Color(0.3, 0.9, 1.0))
 		GameManager.PowerupType.DOUBLE_POINTS:
 			_flash_screen(Color(1.0, 0.85, 0.0))
+		GameManager.PowerupType.GHOST:
+			_flash_screen(Color(0.55, 0.2, 1.0))
+			_apply_ghost_mode(true)
 
 func _on_powerup_expired() -> void:
-	pass
-
-func _activate_pre_game_power_visuals() -> void:
-	if not GameManager.power_active:
-		return
-	match GameManager.selected_power:
-		GameManager.PreGamePower.GHOST_MODE:
-			_apply_ghost_mode(true)
-		GameManager.PreGamePower.HEADSTART:
-			camera.fov = HEADSTART_FOV
+	if _last_active_powerup == GameManager.PowerupType.GHOST:
+		_fade_ghost_mode_out()
+	_last_active_powerup = GameManager.PowerupType.NONE
 
 func _apply_ghost_mode(enable: bool) -> void:
 	# Find all MeshInstance3D children of the truck and set transparency
@@ -646,13 +631,6 @@ func _fade_ghost_mode_out() -> void:
 					func(a: float): mat.albedo_color.a = a,
 					GHOST_MODE_ALPHA, 1.0, 1.0)
 	_ghost_tween.tween_callback(func(): _apply_ghost_mode(false))
-
-func _on_pre_game_power_expired() -> void:
-	match GameManager.selected_power:
-		GameManager.PreGamePower.GHOST_MODE:
-			_fade_ghost_mode_out()
-		GameManager.PreGamePower.HEADSTART:
-			pass  # FOV returns to normal naturally via _update_fov
 
 func _on_achievement_unlocked(_id: String, title: String) -> void:
 	_show_toast(title)
@@ -1085,15 +1063,22 @@ func _spawn_powerup() -> void:
 		return
 	if GameManager.active_powerup != GameManager.PowerupType.NONE:
 		return
-	var types := [
-		GameManager.PowerupType.SHIELD, GameManager.PowerupType.MAGNET,
-		GameManager.PowerupType.SLOW_MO, GameManager.PowerupType.DOUBLE_POINTS,
-	]
+	# Weighted random selection: 10% Ghost (rare), 30% Uncommon, 60% Common
+	var roll: float = randf()
+	var chosen_type: GameManager.PowerupType
+	if roll < 0.10:
+		chosen_type = GameManager.PowerupType.GHOST
+	elif roll < 0.40:
+		# Uncommon: MAGNET or SLOW_MO (50/50)
+		chosen_type = GameManager.PowerupType.MAGNET if randf() < 0.5 else GameManager.PowerupType.SLOW_MO
+	else:
+		# Common: SHIELD or DOUBLE_POINTS (50/50)
+		chosen_type = GameManager.PowerupType.SHIELD if randf() < 0.5 else GameManager.PowerupType.DOUBLE_POINTS
 	var pu: Area3D = POWERUP_SCENE.instantiate()
 	powerup_container.add_child(pu)
 	pu.position.z = SPAWN_Z
 	pu.position.y = 0.1
-	pu.setup(randi() % 3, types[randi() % types.size()])
+	pu.setup(randi() % 3, chosen_type)
 
 func _spawn_traffic_car() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
@@ -1115,6 +1100,17 @@ func _setup_coin_hud() -> void:
 	_coin_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	coin_layer.add_child(_coin_hud_label)
 
+func _setup_diamond_hud() -> void:
+	var diamond_layer := CanvasLayer.new()
+	diamond_layer.layer = 7
+	add_child(diamond_layer)
+	_diamond_hud_label = Label.new()
+	_diamond_hud_label.position = Vector2(16, 282)
+	_diamond_hud_label.add_theme_font_size_override("font_size", 22)
+	_diamond_hud_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
+	_diamond_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	diamond_layer.add_child(_diamond_hud_label)
+
 func _spawn_coin_line() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
 		return
@@ -1131,6 +1127,17 @@ func _spawn_coin_line() -> void:
 		coin_container.add_child(coin)
 		coin.position = Vector3(x, 1.0, SPAWN_Z - i * spacing)
 
+func _spawn_diamond() -> void:
+	if GameManager.current_state != GameManager.GameState.PLAYING:
+		return
+	if diamond_container == null:
+		return
+	var lane_xs: Array[float] = [-3.0, 0.0, 3.0]
+	var x: float = lane_xs[randi() % 3]
+	var diamond: Area3D = DIAMOND_SCENE.instantiate()
+	diamond_container.add_child(diamond)
+	diamond.position = Vector3(x, 0.0, SPAWN_Z)
+
 func _on_truck_died() -> void:
 	play_death_sound()
 	shake_camera(0.5, 0.4)
@@ -1142,6 +1149,18 @@ func _on_truck_died() -> void:
 	GameManager.end_game()
 	await get_tree().create_timer(1.2).timeout
 	get_tree().change_scene_to_file("res://scenes/game_over.tscn")
+
+func revive_truck() -> void:
+	# Called when player uses a diamond to continue
+	truck.revive()
+	health_bar.value = GameManager.health
+	_update_health_bar_color(GameManager.health)
+	_apply_ghost_mode(false)
+	obstacle_timer.start(3.0)
+	garbage_timer.start(2.0)
+	boost_timer.start(randf_range(15.0, 25.0))
+	# Brief invincibility flash effect
+	_flash_screen(Color(0.2, 1.0, 0.5))
 
 func _on_health_changed(new_health: int) -> void:
 	var prev_health: int = int(health_bar.value)
