@@ -7,6 +7,15 @@ extends CharacterBody3D
 const LANES: Array[float] = [-3.0, 0.0, 3.0]
 var current_lane: int = 1  # Start in centre lane
 
+# GLB model path per skin (matches GameManager.SKIN_NAMES order)
+const SKIN_MODELS: Array[String] = [
+	"res://assets/models/garbage-truck.glb",  # 0 Default
+	"res://assets/models/firetruck.glb",       # 1 Fire Truck
+	"res://assets/models/delivery.glb",        # 2 Ice Cream Truck
+	"res://assets/models/truck.glb",           # 3 Monster Truck
+	"res://assets/models/race-future.glb",     # 4 Neon Truck
+]
+
 # Movement constants
 const JUMP_SPEED: float = 9.0
 const GRAVITY: float = 28.0
@@ -41,99 +50,22 @@ func _ready() -> void:
 	position = Vector3(0.0, 0.0, 0.0)
 	rotation = Vector3.ZERO
 	add_to_group("truck")
-	_setup_truck_appearance()
-	_apply_skin(GameManager.selected_skin)
+	_build_mesh()
 
-func _setup_truck_appearance() -> void:
-	# Update cab (Cabin node) to dark green
-	var cabin: MeshInstance3D = get_node_or_null("Cabin")
-	if cabin:
-		var cab_mat := StandardMaterial3D.new()
-		cab_mat.albedo_color = Color(0.1, 0.35, 0.15)
-		cab_mat.metallic = 0.3
-		cab_mat.roughness = 0.5
-		cabin.set_surface_override_material(0, cab_mat)
-	var cabin_roof: MeshInstance3D = get_node_or_null("CabinRoof")
-	if cabin_roof:
-		var roof_mat := StandardMaterial3D.new()
-		roof_mat.albedo_color = Color(0.1, 0.35, 0.15)
-		roof_mat.metallic = 0.3
-		roof_mat.roughness = 0.5
-		cabin_roof.set_surface_override_material(0, roof_mat)
-
-	# Update compactor body color
-	var compactor: MeshInstance3D = get_node_or_null("CompactorBody")
-	if compactor:
-		var comp_mat := StandardMaterial3D.new()
-		comp_mat.albedo_color = Color(0.15, 0.5, 0.2)
-		comp_mat.metallic = 0.3
-		comp_mat.roughness = 0.5
-		compactor.set_surface_override_material(0, comp_mat)
-
-	# Make side stripes bright yellow/green emissive
-	for stripe_name in ["LeftStripe", "RightStripe"]:
-		var stripe: MeshInstance3D = get_node_or_null(stripe_name)
-		if stripe:
-			var stripe_mat := StandardMaterial3D.new()
-			stripe_mat.albedo_color = Color(0.8, 1.0, 0.0)
-			stripe_mat.emission_enabled = true
-			stripe_mat.emission = Color(0.6, 1.0, 0.0)
-			stripe_mat.emission_energy_multiplier = 1.5
-			stripe_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			stripe.set_surface_override_material(0, stripe_mat)
-
-	# Add underglow OmniLight3D beneath the truck
-	var underglow_light := OmniLight3D.new()
-	underglow_light.light_color = Color(0.2, 1.0, 0.3)
-	underglow_light.light_energy = 0.8
-	underglow_light.omni_range = 4.0
-	underglow_light.position = Vector3(0.0, -0.2, 0.0)
-	add_child(underglow_light)
-
-# Apply a skin (0=default, 1=fire, 2=ice cream, 3=monster, 4=neon)
-func _apply_skin(skin_id: int) -> void:
-	var body_colors: Array[Color] = [
-		Color(0.15, 0.5, 0.2),      # Default green
-		Color(0.8, 0.1, 0.1),       # Fire Truck red
-		Color(0.95, 0.75, 0.85),    # Ice Cream pastel
-		Color(0.1, 0.3, 0.1),       # Monster dark green
-		Color(0.05, 0.05, 0.05),    # Neon black base
-	]
-	var cab_colors: Array[Color] = [
-		Color(0.1, 0.35, 0.15),
-		Color(0.7, 0.08, 0.08),
-		Color(0.9, 0.7, 0.8),
-		Color(0.08, 0.25, 0.08),
-		Color(0.05, 0.05, 0.05),
-	]
-	var color := body_colors[skin_id] if skin_id < body_colors.size() else body_colors[0]
-	var cab_color := cab_colors[skin_id] if skin_id < cab_colors.size() else cab_colors[0]
-
-	var compactor: MeshInstance3D = get_node_or_null("CompactorBody")
-	if compactor:
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = color
-		mat.metallic = 0.3
-		mat.roughness = 0.5
-		if skin_id == 4:  # Neon — add glow
-			mat.emission_enabled = true
-			mat.emission = Color(0.0, 1.0, 0.8)
-			mat.emission_energy_multiplier = 1.2
-		compactor.set_surface_override_material(0, mat)
-	for node_name in ["Cabin", "CabinRoof"]:
-		var node: MeshInstance3D = get_node_or_null(node_name)
-		if node:
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = cab_color
-			mat.metallic = 0.3
-			mat.roughness = 0.5
-			node.set_surface_override_material(0, mat)
-
-	# Monster truck: scale up
-	if skin_id == 3:
-		scale = Vector3(1.2, 1.2, 1.2)
-	else:
-		scale = Vector3(1.0, 1.0, 1.0)
+func _build_mesh() -> void:
+	var skin_id := GameManager.selected_skin
+	var model_path: String = SKIN_MODELS[skin_id] if skin_id < SKIN_MODELS.size() else SKIN_MODELS[0]
+	var scene = load(model_path)
+	if scene == null:
+		push_warning("Truck: failed to load model: " + model_path)
+		return
+	var model := scene.instantiate()
+	# Kenney models face +Z; rotate 180° so the truck faces -Z (forward/toward camera)
+	model.rotation_degrees.y = 180.0
+	# Monster truck skin gets a slightly larger scale for presence
+	var model_scale := 1.8 if skin_id == 3 else 1.5
+	model.scale = Vector3(model_scale, model_scale, model_scale)
+	add_child(model)
 
 func _physics_process(delta: float) -> void:
 	if is_dead:
