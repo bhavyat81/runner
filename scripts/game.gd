@@ -238,9 +238,10 @@ func _process(delta: float) -> void:
 			child.position.z += spd * delta
 			if child.position.z >= DESPAWN_Z:
 				child.queue_free()
-	if truck and not truck.is_dead:
-		truck.invincible = GameManager.speed_boost_active or \
-			GameManager.active_powerup == GameManager.PowerupType.SHIELD
+	if truck and "is_dead" in truck and not truck.is_dead:
+		if "invincible" in truck:
+			truck.invincible = GameManager.speed_boost_active or \
+				GameManager.active_powerup == GameManager.PowerupType.SHIELD
 	if GameManager.active_powerup == GameManager.PowerupType.MAGNET:
 		var truck_pos: Vector3 = truck.global_position
 		for child in marker_container.get_children():
@@ -351,7 +352,7 @@ func _update_fov(delta: float) -> void:
 	# Headstart power: extra-wide FOV for motion-blur feel
 	if GameManager.power_active and GameManager.selected_power == GameManager.PreGamePower.HEADSTART:
 		target_fov = HEADSTART_FOV
-	if not truck.is_dead:
+	if truck and "is_dead" in truck and not truck.is_dead:
 		camera.fov = lerpf(camera.fov, target_fov, 4.0 * delta)
 
 func _setup_combo_announcer() -> void:
@@ -926,6 +927,8 @@ func _spawn_flying_object() -> void:
 	fly_obj.set_meta("active", true)
 
 func _process_flying_objects(delta: float) -> void:
+	if flying_container == null:
+		return
 	for child in flying_container.get_children():
 		if not child.has_meta("active"):
 			continue
