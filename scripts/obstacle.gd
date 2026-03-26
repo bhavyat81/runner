@@ -36,7 +36,7 @@ func _build_mesh() -> void:
 	if scene == null:
 		push_warning("Obstacle: failed to load model: " + model_path)
 		return
-	var model := scene.instantiate()
+	var model = scene.instantiate()
 	model.scale = Vector3(1.5, 1.5, 1.5)
 	add_child(model)
 
