@@ -49,6 +49,8 @@ const HEALTH_GOOD_THRESHOLD: int = 60
 const HEALTH_WARNING_THRESHOLD: int = 30
 const BASE_FOV: float = 60.0
 const MAX_FOV: float = 75.0
+const TRAFFIC_SPAWN_CHECK_DISTANCE: float = 9.0
+const TRAFFIC_LANE_PROXIMITY: float = 1.5
 
 var road_segments: Array[Node3D] = []
 var left_buildings: Array[Node3D] = []
@@ -452,9 +454,10 @@ func _setup_challenge_hud() -> void:
 	ch_layer.layer = 6
 	add_child(ch_layer)
 	_challenge_hud_label = Label.new()
-	_challenge_hud_label.position = Vector2(16, 240)
-	_challenge_hud_label.add_theme_font_size_override("font_size", 16)
+	_challenge_hud_label.position = Vector2(16, 320)
+	_challenge_hud_label.add_theme_font_size_override("font_size", 13)
 	_challenge_hud_label.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
+	_challenge_hud_label.modulate = Color(1.0, 1.0, 1.0, 0.75)
 	_challenge_hud_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ch_layer.add_child(_challenge_hud_label)
 	_update_challenge_hud_labels()
@@ -589,47 +592,58 @@ func _on_powerup_expired() -> void:
 	_last_active_powerup = GameManager.PowerupType.NONE
 
 func _apply_ghost_mode(enable: bool) -> void:
-	# Find all MeshInstance3D children of the truck and set transparency
-	for child in truck.get_children():
-		if child is MeshInstance3D:
-			var mats_count: int = child.get_surface_override_material_count()
-			if mats_count == 0:
-				mats_count = child.mesh.get_surface_count() if child.mesh else 0
-			for i in range(mats_count):
-				var mat: StandardMaterial3D = child.get_surface_override_material(i)
-				if mat == null:
-					mat = child.mesh.surface_get_material(i) as StandardMaterial3D if child.mesh else null
-				if mat == null:
-					continue
-				var new_mat: StandardMaterial3D = mat.duplicate()
-				if enable:
-					new_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-					new_mat.albedo_color.a = GHOST_MODE_ALPHA
-					new_mat.emission_enabled = true
-					new_mat.emission = Color(0.4, 0.8, 1.0)
-					new_mat.emission_energy_multiplier = 0.8
-				else:
-					new_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-					new_mat.albedo_color.a = 1.0
-				child.set_surface_override_material(i, new_mat)
+	# Find all MeshInstance3D descendants of the truck recursively
+	var mesh_instances := truck.find_children("*", "MeshInstance3D", true, false)
+	for child in mesh_instances:
+		var mi := child as MeshInstance3D
+		if mi == null:
+			continue
+		var mats_count: int = mi.get_surface_override_material_count()
+		if mats_count == 0:
+			mats_count = mi.mesh.get_surface_count() if mi.mesh else 0
+		for i in range(mats_count):
+			var mat: StandardMaterial3D = mi.get_surface_override_material(i)
+			if mat == null:
+				mat = mi.mesh.surface_get_material(i) as StandardMaterial3D if mi.mesh else null
+			if mat == null:
+				continue
+			var new_mat: StandardMaterial3D = mat.duplicate()
+			if enable:
+				new_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				new_mat.albedo_color.a = GHOST_MODE_ALPHA
+				new_mat.emission_enabled = true
+				new_mat.emission = Color(0.4, 0.8, 1.0)
+				new_mat.emission_energy_multiplier = 0.8
+			else:
+				new_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				new_mat.albedo_color.a = 1.0
+				new_mat.emission_enabled = false
+			mi.set_surface_override_material(i, new_mat)
 
 func _fade_ghost_mode_out() -> void:
 	# Tween alpha back to 1.0 over 1 second
 	if _ghost_tween:
 		_ghost_tween.kill()
 	_ghost_tween = create_tween()
-	for child in truck.get_children():
-		if child is MeshInstance3D:
-			var mats_count: int = child.get_surface_override_material_count()
-			if mats_count == 0:
-				mats_count = child.mesh.get_surface_count() if child.mesh else 0
-			for i in range(mats_count):
-				var mat: StandardMaterial3D = child.get_surface_override_material(i)
-				if mat == null:
-					continue
-				_ghost_tween.parallel().tween_method(
-					func(a: float): mat.albedo_color.a = a,
-					GHOST_MODE_ALPHA, 1.0, 1.0)
+	var mesh_instances := truck.find_children("*", "MeshInstance3D", true, false)
+	for child in mesh_instances:
+		var mi := child as MeshInstance3D
+		if mi == null:
+			continue
+		var mats_count: int = mi.get_surface_override_material_count()
+		if mats_count == 0:
+			mats_count = mi.mesh.get_surface_count() if mi.mesh else 0
+		for i in range(mats_count):
+			var mat: StandardMaterial3D = mi.get_surface_override_material(i)
+			if mat == null:
+				continue
+			var captured_mat := mat
+			_ghost_tween.parallel().tween_method(
+				func(a: float):
+					var c := captured_mat.albedo_color
+					c.a = a
+					captured_mat.albedo_color = c,
+				GHOST_MODE_ALPHA, 1.0, 1.0)
 	_ghost_tween.tween_callback(func(): _apply_ghost_mode(false))
 
 func _on_achievement_unlocked(_id: String, title: String) -> void:
@@ -835,7 +849,7 @@ func _update_day_night() -> void:
 		env.ambient_light_energy = lerpf(from_cfg["ambient_e"], to_cfg["ambient_e"], t)
 
 func _pick_random_weather() -> void:
-	var types := [WeatherType.CLEAR, WeatherType.RAIN, WeatherType.FOG, WeatherType.THUNDERSTORM]
+	var types := [WeatherType.CLEAR, WeatherType.FOG]
 	_apply_weather(types[randi() % types.size()])
 
 func _apply_weather(w_type: int) -> void:
@@ -1083,11 +1097,28 @@ func _spawn_powerup() -> void:
 func _spawn_traffic_car() -> void:
 	if GameManager.current_state != GameManager.GameState.PLAYING:
 		return
+	# Determine which lanes are already occupied near the spawn point
+	var lane_xs: Array[float] = [-3.0, 0.0, 3.0]
+	var occupied: Array[bool] = [false, false, false]
+	for existing in traffic_container.get_children():
+		if abs(existing.position.z - SPAWN_Z) < TRAFFIC_SPAWN_CHECK_DISTANCE:
+			for li in range(3):
+				if abs(existing.position.x - lane_xs[li]) < TRAFFIC_LANE_PROXIMITY:
+					occupied[li] = true
+	# Collect free lanes; always keep at least one lane open
+	var available: Array[int] = []
+	for li in range(3):
+		if not occupied[li]:
+			available.append(li)
+	# Need at least 2 free lanes so we can spawn in one and leave one open
+	if available.size() < 2:
+		return
+	var chosen_lane: int = available[randi() % available.size()]
 	var car: Area3D = TRAFFIC_CAR_SCENE.instantiate()
 	traffic_container.add_child(car)
 	car.position.z = SPAWN_Z
 	car.position.y = 0.0
-	car.setup(randi() % 3, randf() < 0.4)
+	car.setup(chosen_lane, randf() < 0.4)
 
 func _setup_coin_hud() -> void:
 	var coin_layer := CanvasLayer.new()
