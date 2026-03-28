@@ -6,7 +6,7 @@ extends Area3D
 const SPIN_SPEED: float = 120.0  # degrees per second
 const COLLECT_EFFECT_SCENE := preload("res://scenes/collect_effect.tscn")
 var _collected: bool = false
-var _mesh_instance: MeshInstance3D = null
+var _mesh_instance: Node3D = null
 var _bob_time: float = 0.0
 
 func _ready() -> void:
